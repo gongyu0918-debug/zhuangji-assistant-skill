@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+"""主库结构校验 — 验证 components.yaml 和 cases.yaml 的基本完整性。
+
+用法:
+  python validate_library.py
+"""
+
+import sys
+from pathlib import Path
+
+import yaml
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA = ROOT / "data"
+
+REQUIRED_SECTIONS = ["cpus", "motherboards", "memory", "storage", "gpus", "coolers", "psus"]
+
+REQUIRED_FIELDS = {
+    "cpus": {"id", "brand", "model", "platform", "socket"},
+    "motherboards": {"id", "brand", "model", "socket", "memory_generations", "form_factor"},
+    "memory": {"id", "brand", "model", "generation", "capacity_gb"},
+    "storage": {"id", "brand", "model", "capacity_tb", "form_factor"},
+    "gpus": {"id", "brand", "model"},
+    "coolers": {"id", "brand", "model", "type"},
+    "psus": {"id", "brand", "model", "wattage_w"},
+}
+
+# Fields that trigger warning (not error) when missing
+WARN_FIELDS = {
+    "cpus": {"power_w"},
+    "gpus": {"power_w", "length_mm"},
+    "motherboards": {"m2_slots", "sata_ports", "color"},
+}
+
+VALID_PRICE_STATUSES = {"network_reference", "verified_manual", "needs_market_quote"}
+
+
+def main():
+    errors = []
+    warnings = []
+    counts = {}
+
+    # Load components.yaml
+    comp_path = DATA / "components.yaml"
+    if not comp_path.exists():
+        print(f"FAIL: {comp_path} not found")
+        return 1
+
+    with comp_path.open("r", encoding="utf-8") as f:
+        lib = yaml.safe_load(f)
+
+    for section in REQUIRED_SECTIONS:
+        items = lib.get(section, [])
+        counts[section] = len(items)
+        required = REQUIRED_FIELDS.get(section, set())
+
+        for item in items:
+            item_id = item.get("id", "<no-id>")
+            if str(item_id).startswith("cat-") or "--" in str(item_id):
+                errors.append(f"{section}.{item_id}: imported id was not normalized")
+            missing = required - set(item.keys())
+            if missing:
+                errors.append(f"{section}.{item_id}: missing fields {missing}")
+
+            price_status = item.get("price_status", "")
+            if price_status and price_status not in VALID_PRICE_STATUSES:
+                errors.append(f"{section}.{item_id}: invalid price_status '{price_status}'")
+
+            price_cny = item.get("price_cny")
+            if price_status == "needs_market_quote" and price_cny is not None:
+                warnings.append(f"{section}.{item_id}: needs_market_quote but has price_cny={price_cny}")
+            if price_status != "needs_market_quote" and price_cny is None:
+                warnings.append(f"{section}.{item_id}: has price_status={price_status} but price_cny is None")
+            if section == "gpus" and item.get("length_mm"):
+                try:
+                    gpu_length = int(item.get("length_mm"))
+                    if gpu_length > 450 or gpu_length < 120:
+                        errors.append(f"{section}.{item_id}: impossible length_mm={item.get('length_mm')}")
+                except (TypeError, ValueError):
+                    errors.append(f"{section}.{item_id}: invalid length_mm={item.get('length_mm')}")
+
+        for field in sorted(WARN_FIELDS.get(section, set())):
+            missing_items = [item.get("id", "<no-id>") for item in items if not item.get(field)]
+            if missing_items:
+                sample = ", ".join(missing_items[:5])
+                warnings.append(
+                    f"{section}: {len(missing_items)}/{len(items)} missing or empty {field}"
+                    + (f" (sample: {sample})" if sample else "")
+                )
+
+    # Load cases.yaml
+    cases_path = DATA / "cases.yaml"
+    if not cases_path.exists():
+        print(f"FAIL: {cases_path} not found")
+        return 1
+
+    with cases_path.open("r", encoding="utf-8") as f:
+        cases = yaml.safe_load(f)
+
+    case_items = cases.get("cases", [])
+    counts["cases"] = len(case_items)
+
+    for case in case_items:
+        case_id = case.get("id", "<no-id>")
+        if str(case_id).startswith("cat-") or "--" in str(case_id):
+            errors.append(f"cases.{case_id}: imported id was not normalized")
+        if not case.get("brand"):
+            errors.append(f"cases.{case_id}: missing brand")
+        if not case.get("motherboard_support"):
+            warnings.append(f"cases.{case_id}: no motherboard_support")
+        if not case.get("gpu_length_mm"):
+            warnings.append(f"cases.{case_id}: no gpu_length_mm")
+    missing_case_prices = [case.get("id", "<no-id>") for case in case_items if case.get("price_cny") is None]
+    if missing_case_prices:
+        sample = ", ".join(missing_case_prices[:5])
+        warnings.append(
+            f"cases: {len(missing_case_prices)}/{len(case_items)} missing price_cny"
+            + (f" (sample: {sample})" if sample else "")
+        )
+
+    # Report
+    if errors:
+        print("VALIDATION FAILED")
+        for e in errors:
+            print(f"  ❌ {e}")
+        for w in warnings:
+            print(f"  ⚠️ {w}")
+        return 1
+
+    print("component library validation OK")
+    print(f"sections: {', '.join(REQUIRED_SECTIONS)} + cases")
+    for sec, count in counts.items():
+        print(f"  {sec}: {count} items")
+
+    status_counts = {}
+    for section in REQUIRED_SECTIONS:
+        for item in lib.get(section, []):
+            ps = item.get("price_status", "unknown")
+            status_counts[ps] = status_counts.get(ps, 0) + 1
+    print(f"price status counts: {status_counts}")
+
+    if warnings:
+        print(f"\nwarnings ({len(warnings)}):")
+        for w in warnings:
+            print(f"  ⚠️ {w}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

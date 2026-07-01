@@ -1,0 +1,73 @@
+# 装机助手
+
+`装机助手` 是一个面向中文硬件市场的 Codex / OpenAI Skill，用于根据预算、用途、色系和机箱偏好生成台式机配置单，并通过本地脚本做兼容性检查。
+
+- Skill slug: `pc-build-assistant`
+- 展示名称: `装机助手`
+- 当前版本: `0.0.1`
+- 价格参考日期: `2026-06-30`
+- 价格来源说明: 数据来自网络公开信息整理，仅供预算参考，不代表实时成交价或可下单价格。
+
+## 能做什么
+
+- 识别常见短需求，例如“预算 5000 主玩 3A 不要颜值”“预算 8000 白色海景房 主玩 3A”。
+- 按 CPU、主板、内存、硬盘、显卡、电源、散热、机箱逐类查询候选。
+- 生成整机总价、预算差额、取舍说明和下单前复核点。
+- 使用 `scripts/check_compatibility.py --strict` 检查接口、内存、显卡限长、电源余量、散热限高和机箱版型。
+
+## 价格提示
+
+Skill 默认使用离线库中的网络价格参考。
+
+每次输出配置报告时，Agent 都应提醒：
+
+```markdown
+价格参考日期: 2026-06-30
+价格来自网络公开信息整理，仅供预算参考，实际购买前请复核实时价格、库存和具体型号后缀。
+```
+
+## 使用方式
+
+安装到支持 Skill 的环境后，可以直接描述预算和用途：
+
+```text
+预算 5000，主玩 3A，不要颜值
+预算 8000，白色海景房，主玩 3A
+预算 12000，黑色无光，主玩 3A
+```
+
+如果手动运行脚本，可在 Skill 根目录执行：
+
+```bash
+python scripts/query_components.py --category gpu --budget 5000 --sort tier --limit 20
+python scripts/check_compatibility.py --strict --cpu <cpu-id> --mb <mb-id> --mem <mem-id> --storage <ssd-id> --gpu <gpu-id> --psu <psu-id> --cooler <cooler-id> --case <case-id>
+python scripts/validate_library.py
+```
+
+## 文件结构
+
+```text
+.
+├── SKILL.md
+├── agents/openai.yaml
+├── data/
+│   ├── components.yaml
+│   └── cases.yaml
+├── references/
+│   ├── routing.md
+│   ├── pricing.md
+│   ├── compatibility.md
+│   └── hardware-scope.md
+└── scripts/
+    ├── query_components.py
+    ├── check_compatibility.py
+    └── validate_library.py
+```
+
+## 发布边界
+
+本仓库只包含运行 Skill 所需文件。非运行资料、内部记录、测试过程文件和来源站点细节不包含在本发布包中。
+
+## 免责声明
+
+硬件价格和库存变化很快。本 Skill 输出的是基于 `2026-06-30` 网络公开信息整理的预算参考，不构成购买承诺。下单前请核对实时价格、库存、保修、具体型号后缀、颜色版本、尺寸和供电接口。
