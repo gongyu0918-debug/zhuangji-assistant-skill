@@ -2,7 +2,7 @@
 name: pc-build-assistant
 description: 中文市场台式机装机配置助手。用户问装机、配置单、预算分配、兼容性、黑/白色主机、海景房、无光、纯性能、低U高显、2K/3A游戏、多开办公时使用。内置离线配件库、价格日期和程序化兼容性检查；不要凭记忆编型号、价格或兼容结论。
 metadata:
-  display_name: 装机助手
+  display_name: 装机助手.Skill
   version: 0.0.1
   tags: pc-build,hardware,chinese-market,compatibility
 ---

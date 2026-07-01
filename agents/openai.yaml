@@ -1,5 +1,5 @@
 interface:
-  display_name: "装机助手"
+  display_name: "装机助手.Skill"
   short_description: "按预算和用途推荐主机配置，使用网络价格参考并检查兼容性"
   default_prompt: "使用 $pc-build-assistant 根据我的预算和用途推荐一套价格完整、兼容性已检查的主机配置，并注明价格参考日期 2026-06-30、价格仅供参考"
 
