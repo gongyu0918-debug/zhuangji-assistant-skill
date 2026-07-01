@@ -2,7 +2,7 @@
 
 `装机助手` 是一个面向中文硬件市场的 Codex / OpenAI Skill，用于根据预算、用途、色系和机箱偏好生成台式机配置单，并通过本地脚本做兼容性检查。
 
-- Skill slug: `pc-build-assistant`
+- Skill slug: `zhuangji-assistant`
 - 展示名称: `装机助手.Skill`
 - 当前版本: `0.0.1`
 - 许可证: MIT
