@@ -1,7 +1,7 @@
 interface:
   display_name: "装机助手.Skill"
-  short_description: "按预算推荐/升级/检查台式机，覆盖游戏、海景房、AI绘图、剪辑和CAD"
-  default_prompt: "使用 $zhuangji-assistant-skill 根据我的预算和用途推荐、升级、补全或检查一套价格完整、兼容性已核对的主机配置；可覆盖游戏、本地 agent、ComfyUI/SD、CAD 等需求"
+  short_description: "预算装机、硬件DIY、配电脑、升级补全和兼容检查"
+  default_prompt: "使用 $zhuangji-assistant-skill 根据我的预算和用途推荐、升级、补全或检查一套价格完整、兼容性已核对的主机配置；装机场景可覆盖游戏、海景房、AI 绘图、剪辑、CAD，以及为本地 AI 编程/终端 agent 工作流配电脑"
 
 policy:
   allow_implicit_invocation: true
