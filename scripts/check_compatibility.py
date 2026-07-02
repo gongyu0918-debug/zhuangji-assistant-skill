@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""装机兼容性检查引擎 — 移植自中文装机平台前端兼容性逻辑。
+"""装机兼容性检查引擎。
 
 用法:
   python check_compatibility.py --cpu cpu-intel-i5-14400f --mb mb-asus-b760m-k-d4 \
@@ -27,9 +27,8 @@ DATA = ROOT / "data"
 
 
 class CompatibilityChecker:
-    """装机兼容性检查引擎 Python 移植。
+    """装机兼容性检查引擎。
 
-    原始来源: 中文装机平台前端 JS 兼容性检查 class。
     检查 11 项兼容性: CPU↔主板, 内存↔主板(代际/数量/容量),
     显卡↔机箱, 硬盘↔主板, 电源↔功耗, 散热↔机箱, 机箱↔主板, 机箱↔电源。
     """
