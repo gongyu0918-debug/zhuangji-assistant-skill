@@ -31,25 +31,27 @@ REQUIRED_FIELDS = {
     "psus": {"id", "brand", "model", "wattage_w"},
 }
 
-# Fields that trigger warning (not error) when missing
+# Fields that trigger warning (not error) when missing.
+# Motherboard M.2/SATA omissions are tracked separately as non-blocking notes:
+# current mainstream boards usually have at least one M.2 slot, and SATA is
+# only critical for multi-drive / editing / workstation workflows.
 WARN_FIELDS = {
     "cpus": {"power_w"},
     "gpus": {"power_w", "length_mm"},
-    "motherboards": {"m2_slots", "sata_ports", "color"},
+    "motherboards": {"color"},
 }
 
-VALID_PRICE_STATUSES = {
-    "network_reference",
-    "scraped",
-    "verified_manual",
-    "channel_quote",
-    "needs_market_quote",
+NOTE_FIELDS = {
+    "motherboards": {"m2_slots", "sata_ports"},
 }
+
+VALID_PRICE_STATUSES = {"scraped", "verified_manual", "channel_quote", "needs_market_quote"}
 
 
 def main():
     errors = []
     warnings = []
+    notes = []
     counts = {}
 
     # Load components.yaml
@@ -96,6 +98,14 @@ def main():
             if missing_items:
                 sample = ", ".join(missing_items[:5])
                 warnings.append(
+                    f"{section}: {len(missing_items)}/{len(items)} missing or empty {field}"
+                    + (f" (sample: {sample})" if sample else "")
+                )
+        for field in sorted(NOTE_FIELDS.get(section, set())):
+            missing_items = [item.get("id", "<no-id>") for item in items if not item.get(field)]
+            if missing_items:
+                sample = ", ".join(missing_items[:5])
+                notes.append(
                     f"{section}: {len(missing_items)}/{len(items)} missing or empty {field}"
                     + (f" (sample: {sample})" if sample else "")
                 )
@@ -155,6 +165,10 @@ def main():
         print(f"\nwarnings ({len(warnings)}):")
         for w in warnings:
             print(f"  ⚠️ {w}")
+    if notes:
+        print(f"\nnon-blocking notes ({len(notes)}):")
+        for n in notes:
+            print(f"  ℹ️ {n}")
 
     return 0
 
