@@ -10,6 +10,8 @@ from pathlib import Path
 
 import yaml
 
+from component_inference import enrich_item
+
 try:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -47,12 +49,23 @@ NOTE_FIELDS = {
 
 VALID_PRICE_STATUSES = {"scraped", "verified_manual", "channel_quote", "needs_market_quote"}
 
+COVERAGE_FIELDS = {
+    "gpus": ["length_mm", "requires_16pin_psu"],
+    "motherboards": ["m2_slots", "sata_ports", "memory_freq_max"],
+    "memory": ["timing"],
+    "storage": ["pcie_generation"],
+    "coolers": ["type", "radiator_mm", "rgb"],
+    "psus": ["wattage_w", "modular", "native_16pin_gpu_power"],
+    "cases": ["gpu_length_mm", "cpu_cooler_height_mm", "radiator_support"],
+}
+
 
 def main():
     errors = []
     warnings = []
     notes = []
     counts = {}
+    coverage_rows = []
 
     # Load components.yaml
     comp_path = DATA / "components.yaml"
@@ -109,6 +122,7 @@ def main():
                     f"{section}: {len(missing_items)}/{len(items)} missing or empty {field}"
                     + (f" (sample: {sample})" if sample else "")
                 )
+        coverage_rows.extend(_coverage_rows(section, items))
 
     # Load cases.yaml
     cases_path = DATA / "cases.yaml"
@@ -139,6 +153,7 @@ def main():
             f"cases: {len(missing_case_prices)}/{len(case_items)} missing price_cny"
             + (f" (sample: {sample})" if sample else "")
         )
+    coverage_rows.extend(_coverage_rows("cases", case_items))
 
     # Report
     if errors:
@@ -161,6 +176,11 @@ def main():
             status_counts[ps] = status_counts.get(ps, 0) + 1
     print(f"price status counts: {status_counts}")
 
+    if coverage_rows:
+        print("\nfield coverage (raw/effective):")
+        for row in coverage_rows:
+            print(f"  {row}")
+
     if warnings:
         print(f"\nwarnings ({len(warnings)}):")
         for w in warnings:
@@ -171,6 +191,26 @@ def main():
             print(f"  ℹ️ {n}")
 
     return 0
+
+
+def _has_value(item, field):
+    value = item.get(field)
+    return value not in (None, "", [], {})
+
+
+def _coverage_rows(section, items):
+    rows = []
+    fields = COVERAGE_FIELDS.get(section, [])
+    if not fields:
+        return rows
+    enriched_items = [enrich_item(section, item) for item in items]
+    total = len(items) or 1
+    for field in fields:
+        raw = sum(1 for item in items if _has_value(item, field))
+        effective = sum(1 for item in enriched_items if _has_value(item, field))
+        if raw != total or effective != total:
+            rows.append(f"{section}.{field}: raw {raw}/{total}, effective {effective}/{total}")
+    return rows
 
 
 if __name__ == "__main__":

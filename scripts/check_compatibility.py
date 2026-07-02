@@ -16,6 +16,8 @@ from pathlib import Path
 
 import yaml
 
+from component_inference import enrich_item, infer_native_16pin_psu, infer_requires_16pin_gpu
+
 try:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -247,13 +249,16 @@ class CompatibilityChecker:
         """检查显卡供电接口兼容性。"""
         if not gpu or not psu:
             return {}
-        requires_16pin = gpu.get("requires_16pin_psu", False) or "16pin" in (gpu.get("power_connectors") or [])
-        has_native_16pin = psu.get("native_16pin_gpu_power", False)
-        if requires_16pin and not has_native_16pin:
-            return {"type": "warn",
-                "msg": "显卡需要16pin供电，当前电源无原生16pin接口，需使用转接线"}
-        if requires_16pin and has_native_16pin:
+        requires_16pin = infer_requires_16pin_gpu(gpu)
+        native_16pin = infer_native_16pin_psu(psu)
+        if requires_16pin and native_16pin is True:
             return {"type": "success", "msg": "显卡16pin供电与电源原生接口匹配"}
+        if requires_16pin and native_16pin is False:
+            return {"type": "warn",
+                "msg": "显卡需要16pin供电，当前电源未标明原生16pin接口，需复核线材；无原生线材时可使用转接线"}
+        if requires_16pin:
+            return {"type": "msg",
+                "msg": "显卡需要16pin供电，电源缺少原生接口字段，需下单前复核线材；无原生线材时可使用转接线"}
         return {}
 
     def check_cooler_case(self, cooler, case):
@@ -262,6 +267,7 @@ class CompatibilityChecker:
             return {"type": "msg", "msg": "缺少必要组件散热"}
         if not case:
             return {"type": "msg", "msg": "缺少必要组件机箱"}
+        cooler = enrich_item("coolers", cooler)
         cooler_type = cooler.get("type", "air")
         if cooler_type == "air":
             cooler_height = self._parse_num(cooler.get("height_mm", 0))
@@ -409,7 +415,7 @@ def load_components():
             lib = yaml.safe_load(f)
         for section in ["cpus", "motherboards", "memory", "storage", "gpus", "coolers", "psus"]:
             for item in lib.get(section, []):
-                by_id[item["id"]] = item
+                by_id[item["id"]] = enrich_item(section, item)
     cases_path = DATA / "cases.yaml"
     if cases_path.exists():
         with cases_path.open("r", encoding="utf-8") as f:

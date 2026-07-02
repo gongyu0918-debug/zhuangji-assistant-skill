@@ -36975,6 +36975,7 @@ gpus:
   gpu_vendor: NVIDIA
   vram_gb: 8
   memory_type: GDDR7
+  length_mm: 208
   color: white
   rgb: false
   power_connectors:
@@ -37335,6 +37336,7 @@ gpus:
   gpu_vendor: NVIDIA
   vram_gb: 16
   memory_type: GDDR7
+  length_mm: 208
   color: black
   rgb: false
   power_connectors:
@@ -37487,6 +37489,7 @@ gpus:
   gpu_vendor: NVIDIA
   vram_gb: 16
   memory_type: GDDR7
+  length_mm: 329
   color: white
   rgb: true
   power_connectors:
@@ -37554,6 +37557,7 @@ gpus:
   gpu_vendor: NVIDIA
   vram_gb: 12
   memory_type: GDDR7
+  length_mm: 338
   color: white
   rgb: true
   power_connectors:
@@ -37653,10 +37657,12 @@ gpus:
   gpu_vendor: NVIDIA
   vram_gb: 16
   memory_type: GDDR7
+  length_mm: 304
   color: black
   rgb: false
-  power_connectors: []
-  requires_16pin_psu: false
+  power_connectors:
+  - 16pin
+  requires_16pin_psu: true
   power_w: 360
 - id: gpu-rx9070xtgamingoc16g
   brand: 技嘉
@@ -38329,6 +38335,7 @@ gpus:
   gpu_vendor: NVIDIA
   vram_gb: 8
   memory_type: GDRR7
+  length_mm: 197
   color: black
   rgb: false
   power_connectors:
@@ -38397,8 +38404,9 @@ gpus:
   length_mm: 338
   color: black
   rgb: true
-  power_connectors: []
-  requires_16pin_psu: false
+  power_connectors:
+  - 16pin
+  requires_16pin_psu: true
   power_w: 360
 - id: gpu-rtx5070ti16ggamingx
   brand: 微星
@@ -38461,6 +38469,7 @@ gpus:
   gpu_vendor: NVIDIA
   vram_gb: 8
   memory_type: GDDR7
+  length_mm: 281
   color: white
   rgb: true
   power_connectors:
@@ -39963,10 +39972,12 @@ gpus:
   gpu_vendor: NVIDIA
   vram_gb: 16
   memory_type: GDDR7
+  length_mm: 338
   color: white
   rgb: true
-  power_connectors: []
-  requires_16pin_psu: false
+  power_connectors:
+  - 16pin
+  requires_16pin_psu: true
   power_w: 360
 - id: gpu-rtx5080suprimsoc16g
   brand: 微星

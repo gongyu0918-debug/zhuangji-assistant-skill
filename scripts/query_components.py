@@ -18,6 +18,8 @@ from pathlib import Path
 
 import yaml
 
+from component_inference import enrich_item
+
 try:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -49,11 +51,29 @@ DISPLAY_NAMES = {
     "case": "机箱",
 }
 
-# Summary fields per category — minimal for progressive disclosure
-SUMMARY_FIELDS = ["id", "brand", "model", "price_cny", "price_status", "price_date",
-                  "platform", "socket", "chipset", "generation", "capacity_gb", "form_factor",
-                  "wattage_w", "power_w", "length_mm", "color", "rgb",
-                  "native_16pin_gpu_power", "requires_16pin_psu"]
+# Summary fields per category — minimal fields needed for first-pass narrowing.
+SUMMARY_BASE_FIELDS = ["id", "brand", "model", "price_cny", "price_status", "price_date"]
+SUMMARY_FIELDS_BY_CATEGORY = {
+    "cpu": SUMMARY_BASE_FIELDS + ["platform", "socket", "cores", "threads", "power_w"],
+    "mb": SUMMARY_BASE_FIELDS + [
+        "platform", "socket", "chipset", "memory_generations", "memory_slots",
+        "memory_freq_max", "m2_slots", "sata_ports", "form_factor", "color",
+    ],
+    "memory": SUMMARY_BASE_FIELDS + [
+        "generation", "capacity_gb", "module_count", "frequency_mt", "timing", "color", "rgb",
+    ],
+    "storage": SUMMARY_BASE_FIELDS + [
+        "capacity_tb", "capacity_gb", "form_factor", "interface", "pcie_generation", "storage_type", "series",
+    ],
+    "gpu": SUMMARY_BASE_FIELDS + [
+        "chip", "gpu_vendor", "vram_gb", "memory_type", "length_mm", "power_w",
+        "power_connectors", "requires_16pin_psu", "color", "rgb",
+    ],
+    "cooler": SUMMARY_BASE_FIELDS + ["type", "height_mm", "radiator_mm", "color", "rgb"],
+    "psu": SUMMARY_BASE_FIELDS + [
+        "wattage_w", "form_factor", "efficiency", "modular", "native_16pin_gpu_power", "color",
+    ],
+}
 
 COLOR_ALIASES = {
     "white": {"white", "白", "白色"},
@@ -89,7 +109,11 @@ MOTHERBOARD_TIERS = (
 def load_components():
     """Load components.yaml."""
     with (DATA / "components.yaml").open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        lib = yaml.safe_load(f)
+    for section, items in list(lib.items()):
+        if isinstance(items, list):
+            lib[section] = [enrich_item(section, item) for item in items]
+    return lib
 
 
 def load_cases():
@@ -220,9 +244,57 @@ def in_current_scope(section, item):
     return True
 
 
+def _matches_socket(item, requested):
+    item_socket = compact_text(item.get("socket"))
+    wanted = compact_text(requested)
+    return not wanted or wanted in item_socket or item_socket in wanted
+
+
+def _matches_memory_gen(section, item, requested):
+    wanted = str(requested or "").upper()
+    if not wanted:
+        return True
+    if section == "motherboards":
+        return wanted in [str(g).upper() for g in item.get("memory_generations", [])]
+    if section == "memory":
+        return wanted == str(item.get("generation", "")).upper()
+    return True
+
+
+def _normalize_form_factor(ff):
+    text = compact_text(ff)
+    mapping = {"MICROATX": "MATX", "M-ATX": "MATX", "MINIITX": "ITX"}
+    return mapping.get(text, text)
+
+
+def _matches_form_factor(section, item, requested):
+    wanted = _normalize_form_factor(requested)
+    if not wanted:
+        return True
+    if section == "motherboards":
+        return _normalize_form_factor(item.get("form_factor")) == wanted
+    if section == "cases":
+        supported = [_normalize_form_factor(v) for v in item.get("motherboard_support", [])]
+        return wanted in supported
+    return True
+
+
+def _matches_max_length(section, item, max_length):
+    if not max_length:
+        return True
+    if section == "gpus":
+        length = item.get("length_mm") or 0
+        return bool(length) and length <= max_length
+    if section == "cases":
+        limit = item.get("gpu_length_mm") or 0
+        return bool(limit) and limit >= max_length
+    return True
+
+
 def query(category=None, budget=None, platform=None, color=None,
           rgb=None, limit=20, has_price_only=True, showcase=None,
-          include_legacy=False, sort="asc"):
+          include_legacy=False, sort="asc", socket=None, chipset=None,
+          memory_gen=None, form_factor=None, max_length=None):
     """查询配件。返回匹配的配件列表。"""
     results = []
 
@@ -235,6 +307,10 @@ def query(category=None, budget=None, platform=None, color=None,
             if not include_legacy and not item.get("motherboard_support"):
                 continue
             if budget and item.get("price_cny") and item["price_cny"] > budget:
+                continue
+            if not _matches_form_factor("cases", item, form_factor):
+                continue
+            if not _matches_max_length("cases", item, max_length):
                 continue
             if color and not color_matches(item, color):
                 continue
@@ -263,6 +339,16 @@ def query(category=None, budget=None, platform=None, color=None,
                 item_platform = item.get("platform", "").lower()
                 if item_platform and platform.lower() not in item_platform:
                     continue
+            if socket and sec in ("cpus", "motherboards") and not _matches_socket(item, socket):
+                continue
+            if chipset and sec == "motherboards" and compact_text(chipset) not in compact_text(item.get("chipset")):
+                continue
+            if memory_gen and not _matches_memory_gen(sec, item, memory_gen):
+                continue
+            if form_factor and not _matches_form_factor(sec, item, form_factor):
+                continue
+            if not _matches_max_length(sec, item, max_length):
+                continue
             if color and not color_matches(item, color):
                 continue
             if not rgb_matches(item, rgb):
@@ -308,7 +394,8 @@ def _tier_sort_key(category, item):
 
 
 def query_all(budget=None, platform=None, color=None, rgb=None, limit=5,
-              has_price_only=True, include_legacy=False, sort="asc"):
+              has_price_only=True, include_legacy=False, sort="asc", socket=None,
+              chipset=None, memory_gen=None, form_factor=None, max_length=None):
     """Return candidates grouped by category for smoke/progressive disclosure."""
     grouped = {}
     for category in CATEGORIES:
@@ -322,6 +409,11 @@ def query_all(budget=None, platform=None, color=None, rgb=None, limit=5,
             has_price_only=has_price_only,
             include_legacy=include_legacy,
             sort=sort,
+            socket=socket,
+            chipset=chipset,
+            memory_gen=memory_gen,
+            form_factor=form_factor,
+            max_length=max_length,
         )
     return grouped
 
@@ -345,9 +437,10 @@ def _summarize_case(case):
     }
 
 
-def summarize(item):
+def summarize(item, category=None):
     """Extract only summary fields for progressive disclosure."""
-    return {k: item.get(k) for k in SUMMARY_FIELDS if item.get(k) is not None}
+    fields = SUMMARY_FIELDS_BY_CATEGORY.get(category, SUMMARY_BASE_FIELDS)
+    return {k: item.get(k) for k in fields if item.get(k) is not None}
 
 
 def display_extra(category, item):
@@ -359,6 +452,16 @@ def display_extra(category, item):
     if category == "psu" and item.get("wattage_w"):
         connector = " native16pin" if item.get("native_16pin_gpu_power") else ""
         return f"{item.get('wattage_w')}W{connector}"
+    if category == "memory" and item.get("frequency_mt"):
+        timing = f" {item.get('timing')}" if item.get("timing") else ""
+        return f"{item.get('generation','')} {item.get('frequency_mt')}MT/s{timing}"
+    if category == "storage" and item.get("capacity_tb"):
+        return f"{item.get('capacity_tb')}TB {item.get('interface','')}"
+    if category == "cooler":
+        if item.get("type") == "liquid" and item.get("radiator_mm"):
+            return f"liquid {item.get('radiator_mm')}mm"
+        if item.get("height_mm"):
+            return f"{item.get('type','air')} {item.get('height_mm')}mm"
     return ""
 
 
@@ -366,8 +469,14 @@ def main():
     parser = argparse.ArgumentParser(description="配件查询工具 (渐进式披露)")
     parser.add_argument("--category", choices=list(CATEGORIES.keys()) + ["all"],
                         default="all", help="配件品类")
-    parser.add_argument("--budget", type=int, help="最大预算 (元)")
+    parser.add_argument("--budget", type=int, help="单品价格上限 (元)，不是整机预算")
     parser.add_argument("--platform", help="平台过滤 (intel/amd)")
+    parser.add_argument("--socket", help="CPU/主板 socket 过滤 (LGA1700/AM5/LGA1851)")
+    parser.add_argument("--chipset", help="主板芯片组过滤 (B760/B850/X870/Z890 等)")
+    parser.add_argument("--memory-gen", help="内存代际过滤 (DDR4/DDR5)，作用于主板和内存")
+    parser.add_argument("--form-factor", help="主板/机箱版型过滤 (ATX/M-ATX/ITX)")
+    parser.add_argument("--max-length", type=int,
+                        help="显卡长度上限；查询机箱时表示需要容纳的显卡长度 (mm)")
     parser.add_argument("--color", help="颜色过滤 (black/white)")
     parser.add_argument("--rgb", choices=["yes", "no"], help="RGB 过滤")
     parser.add_argument("--showcase", action="store_true", help="只返回海景房机箱")
@@ -388,10 +497,15 @@ def main():
             limit=args.limit,
             include_legacy=args.include_legacy,
             sort=args.sort,
+            socket=args.socket,
+            chipset=args.chipset,
+            memory_gen=args.memory_gen,
+            form_factor=args.form_factor,
+            max_length=args.max_length,
         )
         if not args.detail:
             output = {
-                category: (items if category == "case" else [summarize(r) for r in items])
+                category: (items if category == "case" else [summarize(r, category) for r in items])
                 for category, items in grouped.items()
             }
         else:
@@ -422,6 +536,11 @@ def main():
         showcase=args.showcase if args.category == "case" else None,
         include_legacy=args.include_legacy,
         sort=args.sort,
+        socket=args.socket,
+        chipset=args.chipset,
+        memory_gen=args.memory_gen,
+        form_factor=args.form_factor,
+        max_length=args.max_length,
     )
 
     # Progressive disclosure: summary by default, detail only with --detail
@@ -429,7 +548,7 @@ def main():
         if args.category == "case":
             output = results  # cases already summarized
         else:
-            output = [summarize(r) for r in results]
+            output = [summarize(r, args.category) for r in results]
     else:
         output = results
 
