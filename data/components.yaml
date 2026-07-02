@@ -2588,6 +2588,8 @@ motherboards:
   price_date: '2026-06-30'
   memory_slots: 2
   memory_max_gb: 64
+  m2_slots: 1
+  sata_ports: 4
 - id: mb-intel-b760m-ds3h-ddr4
   brand: Gigabyte
   model: B760M DS3H DDR4
@@ -2602,6 +2604,8 @@ motherboards:
   price_date: '2026-06-30'
   memory_slots: 4
   memory_max_gb: 128
+  m2_slots: 2
+  sata_ports: 4
 - id: mb-intel-pro-b760m-a-wifi-ddr4
   brand: MSI
   model: PRO B760M-A WIFI DDR4
@@ -2616,6 +2620,8 @@ motherboards:
   price_date: '2026-06-30'
   memory_slots: 4
   memory_max_gb: 128
+  m2_slots: 2
+  sata_ports: 4
 - id: mb-intel-z790-tomahawk-wifi
   brand: MSI
   model: MAG Z790 TOMAHAWK WIFI
@@ -2630,6 +2636,8 @@ motherboards:
   price_date: null
   memory_slots: 4
   memory_max_gb: 192
+  m2_slots: 4
+  sata_ports: 7
 - id: mb-intel-z890-tomahawk-wifi
   brand: MSI
   model: MAG Z890 TOMAHAWK WIFI
@@ -2644,6 +2652,8 @@ motherboards:
   price_date: '2026-06-30'
   memory_slots: 4
   memory_max_gb: 256
+  m2_slots: 4
+  sata_ports: 4
 - id: mb-amd-pro-b650m-a-wifi
   brand: MSI
   model: PRO B650M-A WIFI
@@ -2658,6 +2668,8 @@ motherboards:
   price_date: null
   memory_slots: 4
   memory_max_gb: 128
+  m2_slots: 2
+  sata_ports: 4
 - id: mb-amd-b850m-aorus-elite-wifi
   brand: Gigabyte
   model: B850M AORUS ELITE WIFI
@@ -36071,9 +36083,9 @@ gpus:
   rgb: true
   power_connectors:
   - 16pin
-  - 6pin
   requires_16pin_psu: true
   power_w: 250
+  length_mm: 329
 - id: gpu-rtx5070oc12gb
   brand: 七彩虹
   model: 七彩虹 RTX5070 OC 12GB 战斧豪华版
@@ -36160,6 +36172,7 @@ gpus:
   - 8pin
   requires_16pin_psu: false
   power_w: 145
+  length_mm: 228
 - id: gpu-rtx5060windforce8gb
   brand: 技嘉
   model: 技嘉 RTX5060 WindForce 8GB 风魔
@@ -36176,6 +36189,7 @@ gpus:
   - 8pin
   requires_16pin_psu: false
   power_w: 145
+  length_mm: 199
 - id: gpu-rtx5060ti16gb
   brand: 七彩虹
   model: 七彩虹 RTX5060Ti 16GB 战斧豪华版
@@ -42526,13 +42540,12 @@ gpus:
   chip: RTX 5070
   gpu_vendor: NVIDIA
   vram_gb: 12
-  memory_type: GDDR6X
-  length_mm: 320
+  memory_type: GDDR7
+  length_mm: 329
   color: black
   rgb: true
   power_connectors:
   - 16pin
-  - 6pin
   requires_16pin_psu: true
   power_w: 250
 - id: gpu-rtx5060ti16gboc
@@ -44262,6 +44275,7 @@ gpus:
   - 8pin
   requires_16pin_psu: false
   power_w: 145
+  length_mm: 228
 - id: gpu-rtx50508gboc
   brand: 索泰
   model: 索泰 RTX5050 8GB OC 月白

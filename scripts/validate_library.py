@@ -38,7 +38,13 @@ WARN_FIELDS = {
     "motherboards": {"m2_slots", "sata_ports", "color"},
 }
 
-VALID_PRICE_STATUSES = {"network_reference", "verified_manual", "needs_market_quote"}
+VALID_PRICE_STATUSES = {
+    "network_reference",
+    "scraped",
+    "verified_manual",
+    "channel_quote",
+    "needs_market_quote",
+}
 
 
 def main():
