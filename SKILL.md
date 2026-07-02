@@ -1,8 +1,10 @@
 ---
-name: pc-build-assistant
+name: zhuangji-assistant-skill
 description: 中文市场台式机装机配置助手。用户问装机、配置单、预算分配、兼容性、黑/白色主机、海景房、无光、纯性能、低U高显、2K/3A游戏、FPS网游、直播推流、本地 agent、ComfyUI/Stable Diffusion/文生视频、PS/Lightroom、PR/达芬奇/AE 视频剪辑、Blender/3D、UE/Unity 开发、CAD/建模绘图、多开办公、旧机升级、配置补全、搭配检查或硬件原理解释时使用。内置离线配件库、价格日期和程序化兼容性检查；不要凭记忆编型号、价格或兼容结论。
+license: MIT
 metadata:
-  display_name: 装机助手
+  display_name: 装机助手.Skill
+  version: 0.0.2
   tags: pc-build,hardware,chinese-market,compatibility
 ---
 

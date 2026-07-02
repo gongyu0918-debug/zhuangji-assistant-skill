@@ -1,7 +1,7 @@
 interface:
-  display_name: "装机助手"
+  display_name: "装机助手.Skill"
   short_description: "按预算和用途推荐、升级、补全或检查主机配置，覆盖游戏、本地AI和CAD"
-  default_prompt: "使用 $pc-build-assistant 根据我的预算和用途推荐、升级、补全或检查一套价格完整、兼容性已核对的主机配置；可覆盖游戏、本地 agent、ComfyUI/SD、CAD 等需求"
+  default_prompt: "使用 $zhuangji-assistant-skill 根据我的预算和用途推荐、升级、补全或检查一套价格完整、兼容性已核对的主机配置；可覆盖游戏、本地 agent、ComfyUI/SD、CAD 等需求"
 
 policy:
   allow_implicit_invocation: true
