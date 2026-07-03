@@ -123,12 +123,12 @@ def target_result(avg_range, low_range, target):
 def target_human(result_code, target, low_metric=None):
     if result_code == "target_likely_stable":
         if low_metric == "fps_range":
-            return f"来源给出的区间下限也高于 {target} FPS，但这不是 1% low，仍需以同画质实测复核。"
-        return f"目标 {target} FPS 比较稳。"
+            return f"目标 {target} FPS 处在样本区间内。"
+        return f"目标 {target} FPS 处在样本参考范围内。"
     if result_code == "avg_meets_target_p1_low_not_guaranteed":
-        return f"平均帧能到 {target} FPS 附近，但团战/烟雾/复杂场景下不建议承诺一直稳住。"
+        return f"平均帧接近 {target} FPS，实际以同配置实测为准。"
     if result_code == "near_target":
-        return f"有机会摸到 {target} FPS，但更像上限表现，不适合按长期稳定目标下结论。"
+        return f"接近 {target} FPS，实际以同配置实测为准。"
     if result_code == "below_target":
         return f"不建议按 {target} FPS 目标来配，需要提高 CPU/显卡档位或降低画质。"
     return ""
