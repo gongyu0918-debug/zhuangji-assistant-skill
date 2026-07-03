@@ -210,10 +210,13 @@ def format_range(values):
 
 
 def human_line(item):
-    base = (
-        f"{item['game_name']} / {item['resolution']} / {item['preset_name']}："
-        f"平均约 {format_range(item['avg_fps'])} FPS"
-    )
+    if item.get("preset") == "source_default_unknown":
+        base = f"{item['game_name']} / {item['resolution']} 大约帧率：平均约 {format_range(item['avg_fps'])} FPS"
+    else:
+        base = (
+            f"{item['game_name']} / {item['resolution']} / {item['preset_name']}："
+            f"平均约 {format_range(item['avg_fps'])} FPS"
+        )
     if item.get("p1_low_fps"):
         base += f"，1% low 约 {format_range(item['p1_low_fps'])} FPS。"
     elif item.get("fps_range"):
