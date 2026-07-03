@@ -133,7 +133,10 @@ class CompatibilityChecker:
                 continue
             mem_freq = self._parse_num(mem.get("frequency_mt", 0))
             mb_freq = self._parse_num(mb.get("memory_freq_max", 0))
-            if mem_freq and mb_freq and mem_freq > mb_freq:
+            if mem_freq and not mb_freq:
+                results.append({"type": "skipped",
+                    "msg": f"主板缺少内存最高频率字段，未检查内存{label}频率【{mem_freq}MHz】是否在主板支持范围内"})
+            elif mem_freq and mb_freq and mem_freq > mb_freq:
                 results.append({"type": "warn",
                     "msg": f"内存{label}频率【{mem_freq}MHz】超过主板支持【{mb_freq}MHz】，可能不稳定"})
             else:
@@ -321,16 +324,48 @@ class CompatibilityChecker:
             return {"type": "msg", "msg": "缺少必要组件机箱"}
         if not psu:
             return {}
-        psu_size = self._normalize(psu.get("form_factor", "ATX"))
+        case_model = str(case.get("model", ""))
         case_psu_support = [self._normalize(s) for s in case.get("psu_support", ["ATX"])]
-        if not psu_size or not case_psu_support:
-            return {}
+        model_special = any(
+            term in case_model.upper()
+            for term in ("ITX", "MINI", "SFX", "NAS", "HTPC", "卧式", "小型", "紧凑")
+        )
+        small_psu_forms = ("SFX", "SFXL", "TFX", "FLEX")
+        small_psu_only = "ATX" not in case_psu_support and any(s in small_psu_forms for s in case_psu_support)
+        special_case = model_special or small_psu_only
+        psu_size = self._normalize(psu.get("form_factor"))
+        if not psu_size:
+            if "ATX" in case_psu_support and not special_case:
+                psu_size = "ATX"
+            else:
+                return {"type": "msg", "msg": "小机箱或特殊电源位需要确认电源规格(ATX/SFX/SFX-L/FLEX)及限长/限高"}
+        if not case_psu_support:
+            return {"type": "msg", "msg": "机箱缺少电源规格支持信息，需下单前复核"}
+
+        if "ATX" in case_psu_support and not special_case and psu_size in small_psu_forms:
+            return {"type": "error",
+                "msg": "普通ATX/MATX机箱默认不使用SFX/SFX-L/FLEX/TFX小电源；若明确复用小电源，需单独确认转接支架、线材长度和电源限长/限高"}
+
+        psu_len = self._parse_num(psu.get("length_mm", 0))
+        case_limit = self._parse_num(
+            case.get("psu_length_mm", 0) or case.get("psu_max_length_mm", 0) or case.get("psu_clearance_mm", 0)
+        )
         if psu_size in case_psu_support:
-            return {"type": "success", "msg": "机箱和电源尺寸匹配"}
-        if psu_size in ("SFX", "SFXL") and "ATX" in case_psu_support:
-            return {"type": "success", "msg": "小电源装入大机箱，兼容"}
+            if special_case and (not case_limit or not psu_len):
+                return {"type": "skipped",
+                    "msg": "小机箱或特殊电源位缺少机箱电源限长或电源长度字段，需下单前复核限长/限高、转接支架、线材弯折和硬盘笼空间"}
+            if case_limit and psu_len and psu_len > case_limit:
+                return {"type": "error",
+                    "msg": f"电源长度【{psu_len}mm】超过机箱电源位限制【{case_limit}mm】"}
+            if case_limit and psu_len and case_limit - psu_len < 20:
+                return {"type": "warn",
+                    "msg": f"电源长度【{psu_len}mm】接近机箱电源位限制【{case_limit}mm】，需复核线材弯折、限高和硬盘笼空间"}
+            if case_limit and not psu_len and special_case:
+                return {"type": "msg",
+                    "msg": f"机箱电源位限制【{case_limit}mm】，电源缺少长度字段，需下单前复核限长/限高和线材空间"}
+            return {"type": "success", "msg": "机箱和电源规格匹配"}
         return {"type": "error",
-            "msg": f"机箱和电源尺寸不匹配，机箱支持【{case.get('psu_support')}】，电源【{psu.get('form_factor', 'ATX')}】"}
+            "msg": f"机箱和电源规格不匹配，机箱支持【{case.get('psu_support')}】，电源【{psu.get('form_factor', psu_size)}】"}
 
     # --- 主入口 ---
 

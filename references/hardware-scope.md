@@ -9,7 +9,7 @@
 
 ## GPU
 
-- NVIDIA: RTX 50 系 + 5090D/5090D V2 + 复产 RTX 3060 Ti
+- NVIDIA: RTX 50 系 + 5090D/5090D V2 + 复产 RTX 3060 Ti；RTX PRO 6000 Blackwell Workstation 96GB 仅作为 13 万元以上本地大模型/工作站特例
   - RTX 40 系不再收录
 - AMD: RX 9000 系 (9060 XT/9070 GRE/9070/9070 XT)
   - RX 7000 系不再收录

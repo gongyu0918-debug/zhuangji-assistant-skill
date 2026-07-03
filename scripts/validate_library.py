@@ -5,12 +5,13 @@
   python validate_library.py
 """
 
+import re
 import sys
 from pathlib import Path
 
 import yaml
 
-from component_inference import enrich_item
+from component_inference import enrich_item, infer_gpu_vram
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -40,7 +41,8 @@ REQUIRED_FIELDS = {
 WARN_FIELDS = {
     "cpus": {"power_w"},
     "gpus": {"power_w", "length_mm"},
-    "motherboards": {"color"},
+    "motherboards": {"color", "memory_freq_max"},
+    "psus": {"length_mm"},
 }
 
 NOTE_FIELDS = {
@@ -55,9 +57,28 @@ COVERAGE_FIELDS = {
     "memory": ["timing"],
     "storage": ["pcie_generation"],
     "coolers": ["type", "radiator_mm", "rgb"],
-    "psus": ["wattage_w", "modular", "native_16pin_gpu_power"],
-    "cases": ["gpu_length_mm", "cpu_cooler_height_mm", "radiator_support"],
+    "psus": ["wattage_w", "form_factor", "length_mm", "modular", "native_16pin_gpu_power"],
+    "cases": ["gpu_length_mm", "cpu_cooler_height_mm", "radiator_support", "fan_mounts", "psu_length_mm"],
 }
+
+
+def _valid_fan_mounts(value):
+    if value in (None, "", [], {}):
+        return True
+    text = str(value).upper().strip().replace("×", "X")
+    if re.fullmatch(r"\d{1,2}", text):
+        return 1 <= int(text) <= 20
+    if re.fullmatch(r"\d{2,3}(?:\.\d+)?\s*(?:MM|CM)", text):
+        return False
+    if re.search(r"\d{1,2}\s*个(?:以上)?", text):
+        return True
+    if re.search(r"\d{1,2}\s*X\s*(?:120|140|200)", text):
+        return True
+    if re.search(r"(?:120|140|160|200)\s*MM?\s*(?:风扇|FAN)", text):
+        return True
+    if re.search(r"风扇|FAN|TOP|FRONT|REAR|BOTTOM|SIDE|前|顶|后|底|侧", text):
+        return True
+    return not bool(re.fullmatch(r"\d+(?:\.\d+)?\s*(?:MM|CM)?", text))
 
 
 def main():
@@ -105,6 +126,17 @@ def main():
                         errors.append(f"{section}.{item_id}: impossible length_mm={item.get('length_mm')}")
                 except (TypeError, ValueError):
                     errors.append(f"{section}.{item_id}: invalid length_mm={item.get('length_mm')}")
+            if section == "gpus":
+                inferred_vram = infer_gpu_vram(item)
+                current_vram = item.get("vram_gb")
+                if inferred_vram and current_vram:
+                    try:
+                        if int(current_vram) != int(inferred_vram):
+                            errors.append(
+                                f"{section}.{item_id}: vram_gb={current_vram} conflicts with model token {inferred_vram}GB"
+                            )
+                    except (TypeError, ValueError):
+                        errors.append(f"{section}.{item_id}: invalid vram_gb={current_vram}")
 
         for field in sorted(WARN_FIELDS.get(section, set())):
             missing_items = [item.get("id", "<no-id>") for item in items if not item.get(field)]
@@ -146,6 +178,8 @@ def main():
             warnings.append(f"cases.{case_id}: no motherboard_support")
         if not case.get("gpu_length_mm"):
             warnings.append(f"cases.{case_id}: no gpu_length_mm")
+        if not _valid_fan_mounts(case.get("fan_mounts")):
+            errors.append(f"cases.{case_id}: invalid fan_mounts={case.get('fan_mounts')}")
     missing_case_prices = [case.get("id", "<no-id>") for case in case_items if case.get("price_cny") is None]
     if missing_case_prices:
         sample = ", ".join(missing_case_prices[:5])
@@ -195,6 +229,10 @@ def main():
 
 def _has_value(item, field):
     value = item.get(field)
+    if field in {"length_mm", "gpu_length_mm", "cpu_cooler_height_mm", "height_mm"} and value == 0:
+        return False
+    if field == "fan_mounts" and not _valid_fan_mounts(value):
+        return False
     return value not in (None, "", [], {})
 
 
