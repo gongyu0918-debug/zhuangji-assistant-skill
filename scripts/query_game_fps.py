@@ -223,12 +223,8 @@ def human_line(item):
         base += f"，FPS 区间约 {format_range(item['fps_range'])} FPS。"
     else:
         base += "。"
-    if item.get("source_type") == "public_fps_prediction":
-        base += "这是公开预测样本，不等同于实测评测。"
     if item.get("generated_frames"):
         base += "这是含帧生成的观感帧率，手感仍要看基础帧和延迟。"
-    elif item.get("target_note"):
-        base += item["target_note"]
     elif item.get("note"):
         base += item["note"]
     return base
@@ -240,10 +236,10 @@ def format_human(result):
     if result.get("representatives"):
         lines = [result.get("message", "代表游戏参考如下：")]
         lines.extend(human_line(item) for item in result["representatives"])
-        lines.append("帧率仅供选配参考，实际表现会受游戏版本、地图、驱动、画质和后台负载影响。")
+        lines.append("帧率仅供装机选配参考，实际以同配置实测为准。")
         return "\n".join(lines)
     lines = [human_line(result)]
-    lines.append("帧率仅供选配参考，实际表现会受游戏版本、地图、驱动、画质和后台负载影响。")
+    lines.append("帧率仅供装机选配参考，实际以同配置实测为准。")
     return "\n".join(lines)
 
 
