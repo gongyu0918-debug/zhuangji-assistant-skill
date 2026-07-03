@@ -368,12 +368,18 @@ def _trusted_price_floor(category, item):
         capacity = int(item.get("capacity_gb") or 0)
         if not capacity and item.get("capacity_tb"):
             capacity = int(float(item.get("capacity_tb")) * 1000)
+        same_capacity_rows = []
         for row in floors.get("storage", []):
-            if gen != int(row.get("pcie_generation") or 0):
-                continue
             if not _near_capacity(capacity, row.get("capacity_gb")):
                 continue
-            return int(row.get("floor_cny") or 0) or None
+            row_gen = int(row.get("pcie_generation") or 0)
+            if gen == row_gen:
+                return int(row.get("floor_cny") or 0) or None
+            if gen and row_gen and row_gen <= gen:
+                same_capacity_rows.append(row)
+        if same_capacity_rows:
+            best_floor = max(same_capacity_rows, key=lambda row: int(row.get("pcie_generation") or 0))
+            return int(best_floor.get("floor_cny") or 0) or None
     return None
 
 
