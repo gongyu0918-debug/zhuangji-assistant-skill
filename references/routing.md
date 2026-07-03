@@ -16,6 +16,7 @@
 | 小机箱 / ITX | 紧凑型，MATX/ITX | form_factor=MATX/ITX |
 | 低U高显 | CPU够用，显卡拉满 | routing=low_cpu_high_gpu |
 | 2K / 4K | 分辨率目标，影响显卡档位 | resolution=2K/4K |
+| 能跑多少帧 / 跑满 240Hz、360Hz、500Hz / 1K 500帧 | 游戏帧率参考需求 | read=game-performance.md, run=query_game_fps.py |
 | 多开 / 挂机 | CPU核心+内存容量优先 | routing=multitask |
 | 三角洲 / 吃鸡 / CS2 / GO / 瓦 | 热门 FPS / 电竞网游，高帧和 1% low 优先 | routing=fps, cpu_priority=x3d |
 | 直播 / 推流 / OBS / 录制 | 需要硬件编码和稳定后台 | routing=streaming, cpu_priority=intel_igpu |
@@ -33,6 +34,7 @@
 - 3A: 低U高显，优先显卡/显存/散热；CPU够用即可。
 - 网游: CPU和显卡均衡，优先高频低延迟内存。
 - 热门 FPS / 电竞网游: 优先 X3D 处理器、低延迟内存、温度稳定和 1% low；显卡按分辨率/刷新率够用即可，不盲目堆旗舰显卡。
+- 用户问具体帧率或跑满刷新率时，读取 `references/game-performance.md` 并运行 `query_game_fps.py`。只引用离线帧率表的已收录样本；未收录游戏或硬件组合不要编 FPS。
 - 直播推流: 优先 Intel 带核显 CPU + NVIDIA 显卡，兼顾 Quick Sync 和 NVENC；只有用户明确最低价时才考虑 F/KF。
 - 办公: 高U低显或核显，看CPU/多屏/内存/SSD/静音。
 - 生产力: 按软件分流（剪辑/AI/渲染是否吃GPU）。

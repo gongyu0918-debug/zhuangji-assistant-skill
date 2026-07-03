@@ -189,6 +189,40 @@ def main():
         )
     coverage_rows.extend(_coverage_rows("cases", case_items))
 
+    game_fps_path = DATA / "game_fps.yaml"
+    if not game_fps_path.exists():
+        errors.append("game_fps.yaml: missing game FPS reference table")
+    else:
+        with game_fps_path.open("r", encoding="utf-8") as f:
+            game_fps = yaml.safe_load(f) or {}
+        game_ids = {game.get("id") for game in game_fps.get("games", []) if game.get("id")}
+        if not game_ids:
+            errors.append("game_fps.yaml: no games")
+        required_fps_fields = {
+            "game", "resolution", "preset", "cpu", "gpu", "avg_fps", "p1_low_fps",
+            "confidence", "source_title", "source_date", "source_type",
+        }
+        for index, row in enumerate(game_fps.get("benchmarks", []), start=1):
+            prefix = f"game_fps.benchmarks[{index}]"
+            missing = required_fps_fields - set(row)
+            if missing:
+                errors.append(f"{prefix}: missing fields {missing}")
+            if row.get("game") not in game_ids:
+                errors.append(f"{prefix}: unknown game {row.get('game')}")
+            for field in ("avg_fps", "p1_low_fps", "base_fps"):
+                if field not in row:
+                    continue
+                value = row.get(field)
+                if (
+                    not isinstance(value, list)
+                    or len(value) != 2
+                    or not all(isinstance(item, (int, float)) for item in value)
+                    or value[0] <= 0
+                    or value[1] < value[0]
+                ):
+                    errors.append(f"{prefix}: invalid {field}={value}")
+        counts["game_fps_samples"] = len(game_fps.get("benchmarks", []))
+
     # Report
     if errors:
         print("VALIDATION FAILED")

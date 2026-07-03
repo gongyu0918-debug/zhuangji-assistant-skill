@@ -1,0 +1,69 @@
+metadata:
+  version: 1
+  sample_date: "2026-07-04"
+  source_type: "curated_public_benchmark_samples"
+  note: "Only exact-source FPS samples may be listed here. The current public package ships the lookup schema without unsourced FPS numbers."
+
+games:
+  - id: aaa_representative
+    name: "3A代表游戏"
+    aliases: ["3A", "大型3A", "3a游戏", "单机3A"]
+    category: aaa
+    default_preset: high_no_rt
+    representatives: ["black_myth_wukong", "cyberpunk_2077"]
+  - id: delta_force
+    name: "三角洲行动"
+    aliases: ["三角洲", "三角洲行动", "Delta Force", "DeltaForce"]
+    category: competitive_fps
+    default_preset: competitive_low
+  - id: valorant
+    name: "无畏契约"
+    aliases: ["无畏契约", "瓦", "打瓦", "瓦罗兰特", "Valorant"]
+    category: competitive_fps
+    default_preset: competitive_low
+  - id: cs2
+    name: "CS2"
+    aliases: ["CS2", "CS GO", "CSGO", "GO", "反恐精英2"]
+    category: competitive_fps
+    default_preset: competitive_low
+  - id: pubg
+    name: "绝地求生"
+    aliases: ["吃鸡", "绝地求生", "PUBG"]
+    category: competitive_fps
+    default_preset: competitive_low
+  - id: black_myth_wukong
+    name: "黑神话：悟空"
+    aliases: ["黑神话", "黑神话悟空", "Black Myth Wukong", "Black Myth: Wukong"]
+    category: aaa
+    default_preset: high_no_rt
+  - id: cyberpunk_2077
+    name: "赛博朋克2077"
+    aliases: ["赛博朋克", "赛博朋克2077", "Cyberpunk", "Cyberpunk 2077"]
+    category: aaa
+    default_preset: high_no_rt
+
+presets:
+  competitive_low: "竞技低画质"
+  high_no_rt: "高画质，不开光追"
+  rt_dlss_fg: "光追 + DLSS/帧生成"
+
+sample_requirements:
+  required_fields:
+    - game
+    - resolution
+    - preset
+    - cpu
+    - gpu
+    - avg_fps
+    - p1_low_fps
+    - confidence
+    - source_title
+    - source_date
+    - source_type
+  rules:
+    - "必须是同游戏、同分辨率、同画质档、明确 CPU 和 GPU 的直接样本。"
+    - "不允许用相邻显卡、CPU 或跑分倍率推算 FPS。"
+    - "没有 1% low 时默认不入库；如确需低可信度样本，必须在 note 中说明缺口。"
+    - "发布包只保留脱敏来源类型和标题，不保留维护端原始抓取证据。"
+
+benchmarks: []
