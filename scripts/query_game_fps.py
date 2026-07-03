@@ -108,10 +108,10 @@ def choose_row(rows, cpu_text, gpu_text):
     return None
 
 
-def target_result(avg_range, p1_range, target):
+def target_result(avg_range, low_range, target):
     if not target:
         return "no_target"
-    if p1_range[0] >= target:
+    if low_range and low_range[0] >= target:
         return "target_likely_stable"
     if avg_range[0] >= target:
         return "avg_meets_target_p1_low_not_guaranteed"
@@ -120,8 +120,10 @@ def target_result(avg_range, p1_range, target):
     return "below_target"
 
 
-def target_human(result_code, target):
+def target_human(result_code, target, low_metric=None):
     if result_code == "target_likely_stable":
+        if low_metric == "fps_range":
+            return f"来源给出的区间下限也高于 {target} FPS，但这不是 1% low，仍需以同画质实测复核。"
         return f"目标 {target} FPS 比较稳。"
     if result_code == "avg_meets_target_p1_low_not_guaranteed":
         return f"平均帧能到 {target} FPS 附近，但团战/烟雾/复杂场景下不建议承诺一直稳住。"
@@ -147,12 +149,15 @@ def query_one(db, game_id, resolution, preset, cpu, gpu, memory, target_fps=None
     if not row:
         return None
     result = dict(row)
-    code = target_result(result["avg_fps"], result["p1_low_fps"], target_fps)
+    low_range = result.get("p1_low_fps") or result.get("fps_range")
+    low_metric = "p1_low" if result.get("p1_low_fps") else ("fps_range" if result.get("fps_range") else None)
+    code = target_result(result["avg_fps"], low_range, target_fps)
     result["game_name"] = game.get("name")
     result["preset_name"] = db.get("presets", {}).get(preset, preset)
     result["target_fps"] = target_fps
     result["target_result"] = code
-    result["target_note"] = target_human(code, target_fps)
+    result["target_note"] = target_human(code, target_fps, low_metric)
+    result["low_metric"] = low_metric
     result["source_sample_date"] = db.get("metadata", {}).get("sample_date")
     result["sample_match"] = "direct"
     return result
@@ -197,16 +202,28 @@ def build_result(db, args):
 
 
 def format_range(values):
-    return f"{int(values[0])}-{int(values[1])}"
+    start = int(values[0])
+    end = int(values[1])
+    if start == end:
+        return str(start)
+    return f"{start}-{end}"
 
 
 def human_line(item):
     base = (
-        f"{item['game_name']} / {item['resolution']} / {item['preset_name']}: "
-        f"平均约 {format_range(item['avg_fps'])} FPS，1% low 约 {format_range(item['p1_low_fps'])} FPS。"
+        f"{item['game_name']} / {item['resolution']} / {item['preset_name']}："
+        f"平均约 {format_range(item['avg_fps'])} FPS"
     )
+    if item.get("p1_low_fps"):
+        base += f"，1% low 约 {format_range(item['p1_low_fps'])} FPS。"
+    elif item.get("fps_range"):
+        base += f"，FPS 区间约 {format_range(item['fps_range'])} FPS。"
+    else:
+        base += "。"
+    if item.get("source_type") == "public_fps_prediction":
+        base += "这是公开预测样本，不等同于实测评测。"
     if item.get("generated_frames"):
-        base += " 这是含帧生成的观感帧率，手感仍要看基础帧和延迟。"
+        base += "这是含帧生成的观感帧率，手感仍要看基础帧和延迟。"
     elif item.get("target_note"):
         base += item["target_note"]
     elif item.get("note"):

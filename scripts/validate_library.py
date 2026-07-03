@@ -199,7 +199,7 @@ def main():
         if not game_ids:
             errors.append("game_fps.yaml: no games")
         required_fps_fields = {
-            "game", "resolution", "preset", "cpu", "gpu", "avg_fps", "p1_low_fps",
+            "game", "resolution", "preset", "cpu", "gpu", "avg_fps",
             "confidence", "source_title", "source_date", "source_type",
         }
         for index, row in enumerate(game_fps.get("benchmarks", []), start=1):
@@ -209,7 +209,9 @@ def main():
                 errors.append(f"{prefix}: missing fields {missing}")
             if row.get("game") not in game_ids:
                 errors.append(f"{prefix}: unknown game {row.get('game')}")
-            for field in ("avg_fps", "p1_low_fps", "base_fps"):
+            if not row.get("p1_low_fps") and not row.get("fps_range"):
+                errors.append(f"{prefix}: missing either p1_low_fps or fps_range")
+            for field in ("avg_fps", "p1_low_fps", "fps_range", "base_fps"):
                 if field not in row:
                     continue
                 value = row.get(field)
