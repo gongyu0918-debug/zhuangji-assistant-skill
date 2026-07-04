@@ -4,7 +4,7 @@
 
 - Intel: 12/13/14 代 Core 台式机 + Core Ultra 200S 台式机
   - Plus 只作为 250K Plus/250KF Plus/270K Plus 等具体型号后缀
-- AMD: Ryzen 7 / Ryzen 9 AM5 台式机
+- AMD: Ryzen 5 / Ryzen 7 / Ryzen 9 AM5 台式机
 - 不收录: AM4、Intel 11 代及更早
 
 ## GPU

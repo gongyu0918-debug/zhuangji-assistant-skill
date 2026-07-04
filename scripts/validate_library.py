@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from component_inference import enrich_item, infer_gpu_vram
+from component_inference import enrich_item, infer_cooler_type, infer_gpu_vram
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -50,6 +50,10 @@ NOTE_FIELDS = {
 }
 
 VALID_PRICE_STATUSES = {"scraped", "verified_manual", "channel_quote", "needs_market_quote"}
+SOURCE_ID_PATTERN = re.compile(
+    r"(^|-)mhc(-|$)|-(?:cpu|主板|显卡|内存|硬盘|电源|散热|机箱)-\d+-\d+-",
+    re.IGNORECASE,
+)
 
 COVERAGE_FIELDS = {
     "gpus": ["length_mm", "requires_16pin_psu"],
@@ -81,6 +85,11 @@ def _valid_fan_mounts(value):
     return not bool(re.fullmatch(r"\d+(?:\.\d+)?\s*(?:MM|CM)?", text))
 
 
+def _id_not_normalized(item_id):
+    text = str(item_id)
+    return text.startswith("cat-") or "--" in text or bool(SOURCE_ID_PATTERN.search(text))
+
+
 def main():
     errors = []
     warnings = []
@@ -95,7 +104,7 @@ def main():
         return 1
 
     with comp_path.open("r", encoding="utf-8") as f:
-        lib = yaml.safe_load(f)
+        lib = yaml.safe_load(f) or {}
 
     for section in REQUIRED_SECTIONS:
         items = lib.get(section, [])
@@ -104,7 +113,7 @@ def main():
 
         for item in items:
             item_id = item.get("id", "<no-id>")
-            if str(item_id).startswith("cat-") or "--" in str(item_id):
+            if _id_not_normalized(item_id):
                 errors.append(f"{section}.{item_id}: imported id was not normalized")
             missing = required - set(item.keys())
             if missing:
@@ -137,6 +146,11 @@ def main():
                             )
                     except (TypeError, ValueError):
                         errors.append(f"{section}.{item_id}: invalid vram_gb={current_vram}")
+            if section == "coolers":
+                inferred_type = infer_cooler_type(item)
+                raw_type = str(item.get("type") or "").lower()
+                if inferred_type == "liquid" and raw_type not in {"liquid", "water", "水冷"}:
+                    errors.append(f"{section}.{item_id}: type={item.get('type')} conflicts with model-inferred liquid cooler")
 
         for field in sorted(WARN_FIELDS.get(section, set())):
             missing_items = [item.get("id", "<no-id>") for item in items if not item.get(field)]
@@ -163,15 +177,18 @@ def main():
         return 1
 
     with cases_path.open("r", encoding="utf-8") as f:
-        cases = yaml.safe_load(f)
+        cases = yaml.safe_load(f) or {}
 
     case_items = cases.get("cases", [])
     counts["cases"] = len(case_items)
 
     for case in case_items:
         case_id = case.get("id", "<no-id>")
-        if str(case_id).startswith("cat-") or "--" in str(case_id):
+        if _id_not_normalized(case_id):
             errors.append(f"cases.{case_id}: imported id was not normalized")
+        price_status = case.get("price_status", "")
+        if price_status and price_status not in VALID_PRICE_STATUSES:
+            errors.append(f"cases.{case_id}: invalid price_status '{price_status}'")
         if not case.get("brand"):
             errors.append(f"cases.{case_id}: missing brand")
         if not case.get("motherboard_support"):

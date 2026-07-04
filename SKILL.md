@@ -2,17 +2,18 @@
 name: zhuangji-assistant-skill
 description: 中文市场台式机装机配置助手。用户明确在问预算装机、装机 DIY、硬件 DIY、配电脑、配置单、整机推荐、旧机升级、配置补全、搭配检查、预算分配、兼容性或硬件搭配原理，并且目标是选购、升级或评估台式机硬件时使用。触发后可按 3A/FPS、直播推流、为本地 AI 编程/终端 agent 工作流配电脑、ComfyUI/Stable Diffusion/文生视频、PS/Lightroom、PR/达芬奇/AE 视频剪辑、Blender/3D、UE/Unity 开发、CAD/建模绘图、黑/白海景房、无光或纯性能等用途路由；单独询问软件、游戏、agent 或教程使用方法时不要触发。内置离线配件库、价格日期和程序化兼容性检查；不要凭记忆编型号、价格或兼容结论。
 metadata:
-  display_name: 装机助手
+  display_name: DIY装机助手
   tags: pc-build,hardware,chinese-market,compatibility
+license: MIT
 ---
 
-# 装机助手
+# DIY装机助手
 
 面向中文硬件市场的台式机配置助手。核心能力是用离线配件库查候选、用脚本做兼容性检查、按预算和需求给可复核配置单。
 
 ## 工作流
 
-1. 识别需求。需要解析预算、用途、分辨率、色系、RGB、机箱形态或口语化表达时，读 `references/routing.md`。用户问升级、补全、搭配检查、是否合理或硬件原理时，读 `references/workflows.md`。用户问具体游戏帧率、跑满刷新率、1K/2K/4K 帧数或 500 帧目标时，读 `references/game-performance.md`。
+1. 识别需求。需要解析预算、用途、分辨率、色系、RGB、机箱形态或口语化表达时，读 `references/routing.md`。用户问升级、补全、搭配检查、是否合理或硬件原理时，读 `references/workflows.md`。用户问具体游戏帧率、跑满刷新率、1K/2K/4K 帧数或 500 帧目标时，读 `references/game-performance.md`。价格规则不清楚时读 `references/pricing.md`；兼容性字段含义不清楚时读 `references/compatibility.md`；硬件收录边界不清楚时读 `references/hardware-scope.md`。
    - "黑色海景房" / "白色海景房": 对应黑/白色系 + 展示型机箱，通常需要读取机箱风扇位并预留风扇预算；好看优先时提高水冷权重。
    - "无光" / "不要RGB" / "纯性能不要颜值": 优先性能和数据完整度，避免 RGB 溢价。
    - "低U高显": CPU 够用即可，显卡预算优先，但整机总价必须贴近用户预算。

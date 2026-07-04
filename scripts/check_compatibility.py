@@ -447,14 +447,14 @@ def load_components():
     components_path = DATA / "components.yaml"
     if components_path.exists():
         with components_path.open("r", encoding="utf-8") as f:
-            lib = yaml.safe_load(f)
+            lib = yaml.safe_load(f) or {}
         for section in ["cpus", "motherboards", "memory", "storage", "gpus", "coolers", "psus"]:
             for item in lib.get(section, []):
                 by_id[item["id"]] = enrich_item(section, item)
     cases_path = DATA / "cases.yaml"
     if cases_path.exists():
         with cases_path.open("r", encoding="utf-8") as f:
-            cases = yaml.safe_load(f)
+            cases = yaml.safe_load(f) or {}
         for item in cases.get("cases", []):
             by_id[item["id"]] = item
     return by_id
@@ -521,7 +521,8 @@ def main():
             if check.get("type"):
                 icon = {"error": "❌", "warn": "⚠️", "success": "✅", "msg": "ℹ️", "skipped": "↷"}.get(check["type"], "  ")
                 print(f"  {icon} {name}: {check['msg']}")
+    return 1 if result["overall"] == "fail" else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

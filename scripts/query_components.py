@@ -14,6 +14,7 @@ import argparse
 import json
 import re
 import sys
+from functools import lru_cache
 from statistics import median
 from pathlib import Path
 
@@ -165,20 +166,22 @@ PSU_COMMON_SIGNALS = (
 )
 
 
+@lru_cache(maxsize=1)
 def load_components():
     """Load components.yaml."""
     with (DATA / "components.yaml").open("r", encoding="utf-8") as f:
-        lib = yaml.safe_load(f)
+        lib = yaml.safe_load(f) or {}
     for section, items in list(lib.items()):
         if isinstance(items, list):
             lib[section] = [enrich_item(section, item) for item in items]
     return lib
 
 
+@lru_cache(maxsize=1)
 def load_cases():
     """Load cases.yaml."""
     with (DATA / "cases.yaml").open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f) or {}
 
 
 _PRICE_FLOORS = None
@@ -214,6 +217,27 @@ def compact_text(value):
     return "".join(ch for ch in str(value or "").upper() if ch.isalnum())
 
 
+def _parse_num(value, default=0):
+    """Parse imported numeric fields that may carry units or noisy text."""
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        cleaned = re.sub(r"[^\d.-]", "", value)
+        if cleaned in ("", "-", ".", "-."):
+            return default
+        try:
+            return float(cleaned) if "." in cleaned else int(cleaned)
+        except ValueError:
+            return default
+    return default
+
+
+def _parse_int(value, default=0):
+    return int(_parse_num(value, default) or default)
+
+
 def item_text(item):
     """Join searchable fields for positive candidate-pool scoring."""
     return " ".join(str(item.get(k, "")) for k in ("brand", "model", "series", "id"))
@@ -239,14 +263,21 @@ def candidate_signal_score(item, primary=(), secondary=(), common=()):
 
 def parse_rated_wattage(item):
     """Prefer rated wattage in the model text over noisy imported fields."""
-    text = str(item.get("model", ""))
+    text = " ".join(str(item.get(k, "")) for k in ("model", "id", "series"))
     match = re.search(r"额定\s*(\d{3,4})\s*W", text, flags=re.IGNORECASE)
     if match:
         return int(match.group(1))
     match = re.search(r"(\d{3,4})\s*W", text, flags=re.IGNORECASE)
     if match:
         return int(match.group(1))
-    return int(item.get("wattage_w") or 0)
+    candidates = [
+        int(m.group(1))
+        for m in re.finditer(r"(?<![0-9.])([3-9]\d{2}|1\d{3}|2000)(?![0-9.])", text)
+    ]
+    plausible = [value for value in candidates if 300 <= value <= 2000]
+    if plausible:
+        return plausible[0]
+    return _parse_int(item.get("wattage_w"))
 
 
 def _extract_cpu_model_token(item):
@@ -293,20 +324,20 @@ def _outlier_group_key(category, item):
                 if key in chip:
                     chip = key
                     break
-        vram = int(infer_gpu_vram(item) or 0)
+        vram = _parse_int(infer_gpu_vram(item))
         return ("gpu", chip, vram) if chip and vram else None
     if category == "storage":
-        capacity = int(item.get("capacity_gb") or 0)
-        gen = int(item.get("pcie_generation") or 0)
+        capacity = _parse_int(item.get("capacity_gb"))
+        gen = _parse_int(item.get("pcie_generation"))
         speed = _storage_read_speed(item)
         speed_bucket = (speed // 1000) if speed else 0
         return ("storage", capacity, gen, speed_bucket) if capacity and gen else None
     if category == "memory":
         generation = str(item.get("generation") or "").upper()
-        capacity = int(item.get("capacity_gb") or 0)
-        freq = int(item.get("frequency_mt") or 0)
+        capacity = _parse_int(item.get("capacity_gb"))
+        freq = _parse_int(item.get("frequency_mt"))
         timing = _memory_timing_value(item)
-        modules = int(item.get("module_count") or 0)
+        modules = _parse_int(item.get("module_count"))
         return ("memory", generation, capacity, freq, timing, modules) if generation and capacity and freq else None
     return None
 
@@ -314,15 +345,15 @@ def _outlier_group_key(category, item):
 def _near_capacity(value, target):
     if not value or not target:
         return False
-    value = int(value)
-    target = int(target)
+    value = _parse_int(value)
+    target = _parse_int(target)
     return abs(value - target) <= 96
 
 
 def _same_capacity(value, target):
     if not value or not target:
         return False
-    return int(value) == int(target)
+    return _parse_int(value) == _parse_int(target)
 
 
 def _trusted_price_floor(category, item):
@@ -334,52 +365,52 @@ def _trusted_price_floor(category, item):
         for row in rows:
             tokens = _cpu_price_floor_tokens(row.get("model"))
             if tokens and any(token in text for token in tokens):
-                return int(row.get("floor_cny") or 0) or None
+                return _parse_int(row.get("floor_cny")) or None
     if category == "gpu":
         chip_text = compact_text(" ".join(str(item.get(k, "")) for k in ("chip", "model", "id")))
-        vram = int(infer_gpu_vram(item) or 0)
+        vram = _parse_int(infer_gpu_vram(item))
         rows = sorted(floors.get("gpus", []), key=lambda row: len(compact_text(row.get("chip"))), reverse=True)
         for row in rows:
             target = compact_text(row.get("chip"))
             if not target or target not in chip_text:
                 continue
-            min_vram = int(row.get("min_vram_gb") or 0)
-            max_vram = int(row.get("max_vram_gb") or 0)
+            min_vram = _parse_int(row.get("min_vram_gb"))
+            max_vram = _parse_int(row.get("max_vram_gb"))
             if min_vram and vram and vram < min_vram:
                 continue
             if max_vram and vram and vram > max_vram:
                 continue
-            return int(row.get("floor_cny") or 0) or None
+            return _parse_int(row.get("floor_cny")) or None
     if category == "memory":
         generation = str(item.get("generation") or "").upper()
-        capacity = int(item.get("capacity_gb") or 0)
-        modules = int(item.get("module_count") or 0)
+        capacity = _parse_int(item.get("capacity_gb"))
+        modules = _parse_int(item.get("module_count"))
         for row in floors.get("memory", []):
             if generation != str(row.get("generation") or "").upper():
                 continue
             if not _same_capacity(capacity, row.get("capacity_gb")):
                 continue
-            row_modules = int(row.get("module_count") or 0)
+            row_modules = _parse_int(row.get("module_count"))
             if row_modules and modules and modules != row_modules:
                 continue
-            return int(row.get("floor_cny") or 0) or None
+            return _parse_int(row.get("floor_cny")) or None
     if category == "storage":
-        gen = int(item.get("pcie_generation") or 0)
-        capacity = int(item.get("capacity_gb") or 0)
+        gen = _parse_int(item.get("pcie_generation"))
+        capacity = _parse_int(item.get("capacity_gb"))
         if not capacity and item.get("capacity_tb"):
-            capacity = int(float(item.get("capacity_tb")) * 1000)
+            capacity = int(_parse_num(item.get("capacity_tb")) * 1000)
         same_capacity_rows = []
         for row in floors.get("storage", []):
             if not _near_capacity(capacity, row.get("capacity_gb")):
                 continue
-            row_gen = int(row.get("pcie_generation") or 0)
+            row_gen = _parse_int(row.get("pcie_generation"))
             if gen == row_gen:
-                return int(row.get("floor_cny") or 0) or None
+                return _parse_int(row.get("floor_cny")) or None
             if gen and row_gen and row_gen <= gen:
                 same_capacity_rows.append(row)
         if same_capacity_rows:
-            best_floor = max(same_capacity_rows, key=lambda row: int(row.get("pcie_generation") or 0))
-            return int(best_floor.get("floor_cny") or 0) or None
+            best_floor = max(same_capacity_rows, key=lambda row: _parse_int(row.get("pcie_generation")))
+            return _parse_int(best_floor.get("floor_cny")) or None
     return None
 
 
@@ -410,7 +441,7 @@ def filter_low_price_outliers(category, results):
     groups = {}
     if category != "cpu":
         for item in results:
-            price = item.get("price_cny")
+            price = _parse_num(item.get("price_cny"))
             key = _outlier_group_key(category, item)
             if key and price:
                 groups.setdefault(key, []).append(float(price))
@@ -421,7 +452,7 @@ def filter_low_price_outliers(category, results):
     kept = []
     for item in results:
         key = _outlier_group_key(category, item)
-        price = float(item.get("price_cny") or 0)
+        price = float(_parse_num(item.get("price_cny")))
         trusted_floor = _trusted_price_floor(category, item)
         if trusted_floor and price and price < trusted_floor:
             continue
@@ -495,18 +526,18 @@ def in_current_scope(section, item, include_workstation_gpu=False):
 
     if section == "memory":
         # Keep low-budget fallback candidates visible; recommendation rules still prefer 16GB+.
-        return str(item.get("generation", "")).upper() in {"DDR4", "DDR5"} and int(item.get("capacity_gb") or 0) >= 8
+        return str(item.get("generation", "")).upper() in {"DDR4", "DDR5"} and _parse_int(item.get("capacity_gb")) >= 8
 
     if section == "storage":
         form = str(item.get("form_factor", "")).upper()
         interface = str(item.get("interface", "")).upper()
-        generation = item.get("pcie_generation") or 0
-        capacity_tb = float(item.get("capacity_tb") or 0)
-        capacity_gb = int(item.get("capacity_gb") or 0)
+        generation = _parse_int(item.get("pcie_generation"))
+        capacity_tb = _parse_num(item.get("capacity_tb"))
+        capacity_gb = _parse_int(item.get("capacity_gb"))
         return (
             "M.2" in form
-            and ("PCIE" in interface or "NVME" in interface or int(generation or 0) >= 4)
-            and int(generation or 0) >= 4
+            and ("PCIE" in interface or "NVME" in interface or generation >= 4)
+            and generation >= 4
             and (capacity_tb >= 0.48 or capacity_gb >= 480)
         )
 
@@ -519,9 +550,9 @@ def in_current_scope(section, item, include_workstation_gpu=False):
         ))
 
     if section == "coolers":
-        height = item.get("height_mm") or 0
-        radiator = item.get("radiator_mm") or 0
-        price = item.get("price_cny") or 0
+        height = _parse_num(item.get("height_mm"))
+        radiator = _parse_int(item.get("radiator_mm"))
+        price = _parse_num(item.get("price_cny"))
         return (bool(radiator) or float(height or 0) >= 120) and int(price or 0) >= 50
 
     if section == "psus":
@@ -569,11 +600,11 @@ def _matches_max_length(section, item, max_length):
     if not max_length:
         return True
     if section == "gpus":
-        length = item.get("length_mm") or 0
-        return bool(length) and length <= max_length
+        length = _parse_num(item.get("length_mm"))
+        return bool(length) and length <= _parse_num(max_length)
     if section == "cases":
-        limit = item.get("gpu_length_mm") or 0
-        return bool(limit) and limit >= max_length
+        limit = _parse_num(item.get("gpu_length_mm"))
+        return bool(limit) and limit >= _parse_num(max_length)
     return True
 
 
@@ -676,9 +707,9 @@ def _sort_results(results, sort, category=None):
     if sort == "tier":
         results.sort(key=lambda x: _tier_sort_key(category, x))
     elif sort in ("desc", "price-desc"):
-        results.sort(key=lambda x: (x.get("price_cny") is None, -(x.get("price_cny") or 0), x.get("id", "")))
+        results.sort(key=lambda x: (x.get("price_cny") is None, -_parse_num(x.get("price_cny")), x.get("id", "")))
     else:
-        results.sort(key=lambda x: (x.get("price_cny") is None, x.get("price_cny") or 0, x.get("id", "")))
+        results.sort(key=lambda x: (x.get("price_cny") is None, _parse_num(x.get("price_cny")), x.get("id", "")))
 
 
 def query(category=None, budget=None, platform=None, color=None,
@@ -699,7 +730,7 @@ def query(category=None, budget=None, platform=None, color=None,
                 continue
             if not include_legacy and not item.get("motherboard_support"):
                 continue
-            if budget and item.get("price_cny") and item["price_cny"] > budget:
+            if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
                 continue
             if not _matches_form_factor("cases", item, form_factor):
                 continue
@@ -728,7 +759,7 @@ def query(category=None, budget=None, platform=None, color=None,
                 sec, item, include_workstation_gpu=include_workstation_gpu
             ):
                 continue
-            if budget and item.get("price_cny") and item["price_cny"] > budget:
+            if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
                 continue
             if platform:
                 item_platform = item.get("platform", "").lower()
@@ -747,13 +778,13 @@ def query(category=None, budget=None, platform=None, color=None,
             if sec == "gpus":
                 if gpu_chip and not _matches_gpu_chip(item, gpu_chip):
                     continue
-                if min_vram and int(infer_gpu_vram(item) or 0) < int(min_vram):
+                if min_vram and _parse_int(infer_gpu_vram(item)) < _parse_int(min_vram):
                     continue
                 if gpu_cooling and infer_gpu_cooling(item) != gpu_cooling:
                     continue
-            if sec == "memory" and min_capacity and int(item.get("capacity_gb") or 0) < int(min_capacity):
+            if sec == "memory" and min_capacity and _parse_int(item.get("capacity_gb")) < _parse_int(min_capacity):
                 continue
-            if sec == "storage" and min_capacity and int(item.get("capacity_gb") or 0) < int(min_capacity):
+            if sec == "storage" and min_capacity and _parse_int(item.get("capacity_gb")) < _parse_int(min_capacity):
                 continue
             if color and not color_matches(item, color):
                 continue
@@ -859,7 +890,7 @@ def _storage_tier(item):
         primary=STORAGE_PRIMARY_SIGNALS,
         common=STORAGE_COMMON_SIGNALS,
     )
-    generation = int(item.get("pcie_generation") or 0)
+    generation = _parse_int(item.get("pcie_generation"))
     if generation >= 5:
         score += 5
     elif generation >= 4:
@@ -873,7 +904,7 @@ def _storage_tier(item):
         score += 1
     if "TLC" in compact_text(item_text(item)):
         score += 3
-    capacity_gb = int(item.get("capacity_gb") or 0)
+    capacity_gb = _parse_int(item.get("capacity_gb"))
     if capacity_gb >= 4000:
         score += 2
     elif capacity_gb >= 2000:
@@ -895,7 +926,7 @@ def _memory_tier(item):
     score = 0
     if has_candidate_signal(item, MEMORY_ADOPTION_SIGNALS):
         score += 8
-    freq = int(item.get("frequency_mt") or 0)
+    freq = _parse_int(item.get("frequency_mt"))
     if 6000 <= freq <= 6400:
         score += 4
     elif freq >= 6800:
@@ -909,14 +940,14 @@ def _memory_tier(item):
         score += 3
     elif timing and timing <= 36:
         score += 2
-    module_count = int(item.get("module_count") or 0)
+    module_count = _parse_int(item.get("module_count"))
     if module_count == 2:
         score += 4
     elif module_count > 2:
         score -= 3
-    price = int(item.get("price_cny") or 0)
+    price = _parse_int(item.get("price_cny"))
     generation = str(item.get("generation", "")).upper()
-    capacity_gb = int(item.get("capacity_gb") or 0)
+    capacity_gb = _parse_int(item.get("capacity_gb"))
     if generation == "DDR5" and freq >= 5600 and capacity_gb >= 32 and 0 < price < 1300:
         score -= 8
     if generation == "DDR5" and freq >= 5600 and capacity_gb >= 64 and 0 < price < 2500:
@@ -929,7 +960,7 @@ def _memory_tier(item):
 def _cooler_tier(item):
     """Score coolers by heat capacity and visible adoption signals."""
     score = candidate_signal_score(item, primary=COOLER_ADOPTION_SIGNALS)
-    radiator = int(item.get("radiator_mm") or 0)
+    radiator = _parse_int(item.get("radiator_mm"))
     if radiator >= 420:
         score += 24
     elif radiator >= 360:
@@ -948,7 +979,7 @@ def _cooler_tier(item):
             score += 5
         elif pipes <= 4:
             score -= 3
-    height = float(item.get("height_mm") or 0)
+    height = float(_parse_num(item.get("height_mm")))
     if 145 <= height <= 165:
         score += 2
     if any(token in text for token in ("LCD", "数显", "屏")):
@@ -998,7 +1029,7 @@ def _psu_tier(item):
 
 def _tier_sort_key(category, item):
     """Category-aware tier sort used by the progressive query helper."""
-    price = item.get("price_cny") or 0
+    price = _parse_num(item.get("price_cny"))
     if category == "cpu":
         return (-_cpu_tier(item), price)
     if category == "gpu":
@@ -1194,6 +1225,7 @@ def main():
 
         if args.json:
             print(json.dumps(output, ensure_ascii=False, indent=2))
+            total = sum(len(items) for items in output.values())
         else:
             total = sum(len(items) for items in output.values())
             print(f"查询结果: {total} 条，按品类分组" + (" (摘要模式, 用 --detail 看完整属性)" if not args.detail else ""))
@@ -1205,7 +1237,7 @@ def main():
                     showcase_tag = " [海景房]" if r.get("is_showcase") else ""
                     extra = display_extra(category, r)
                     print(f"  {r.get('id',''):45s} {r.get('brand',''):10s} {r.get('model',''):35s} {price:>8s} {color} {extra} {showcase_tag}")
-        return
+        return 0 if total else 2
 
     results = query(
         category=args.category,
@@ -1252,7 +1284,8 @@ def main():
             else:
                 price = f"¥{r['price_cny']}" if r.get("price_cny") else "待补价"
                 print(f"  {r['id']:45s} {r.get('brand',''):12s} {r.get('model',''):40s} {price:>8s}")
+    return 0 if output else 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

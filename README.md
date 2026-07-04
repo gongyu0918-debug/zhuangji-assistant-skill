@@ -1,10 +1,10 @@
-# 装机助手
+# DIY装机助手
 
-`装机助手` 是一个面向中文硬件市场的 Codex / OpenAI Skill，用于根据预算、用途、色系和机箱偏好生成台式机配置单，并通过本地脚本做兼容性检查。
+`DIY装机助手` 是一个面向中文硬件市场的 Codex / OpenAI Skill，用于根据预算、用途、色系和机箱偏好生成台式机配置单，并通过本地脚本做兼容性检查。
 
 - Skill slug: `zhuangji-assistant-skill`
-- 展示名称: `装机助手`
-- 当前版本: `0.0.8`
+- 展示名称: `DIY装机助手`
+- 当前版本: `0.0.9`
 - 许可证: MIT
 - 价格参考日期: 以所选条目 `price_date` 为准；当前库 metadata 为 `2026-07-03`
 - 价格来源说明: 数据来自网络公开信息整理，仅供预算参考，不代表实时成交价或可下单价格。
@@ -60,23 +60,27 @@ python scripts/validate_library.py
 ├── agents/openai.yaml
 ├── data/
 │   ├── components.yaml
-│   └── cases.yaml
+│   ├── cases.yaml
+│   ├── game_fps.yaml
+│   └── price_floors.yaml
 ├── references/
 │   ├── routing.md
 │   ├── workflows.md
+│   ├── game-performance.md
 │   ├── pricing.md
 │   ├── compatibility.md
 │   └── hardware-scope.md
 └── scripts/
     ├── component_inference.py
     ├── query_components.py
+    ├── query_game_fps.py
     ├── check_compatibility.py
     └── validate_library.py
 ```
 
 ## 发布边界
 
-本仓库只包含通用 Codex / OpenAI Skill 发布所需文件。非运行资料、内部记录和测试过程文件不包含在本发布包中。ClawHub 发布使用单独的 OpenClaw 风格发布目录，二者的元数据和说明面保持分离。
+本仓库只包含通用 Codex / OpenAI Skill 发布所需文件。`agents/openai.yaml` 是 Codex / OpenAI Skill 的展示元数据，不作为 ClawHub 元数据使用。非运行资料、内部记录和测试过程文件不包含在本发布包中。ClawHub 发布使用单独的 OpenClaw 风格发布目录，二者的元数据和说明面保持分离。
 
 ## 免责声明
 
