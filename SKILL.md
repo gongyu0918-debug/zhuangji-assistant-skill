@@ -13,7 +13,7 @@ license: MIT
 
 ## 工作流
 
-1. 识别需求。先判断是整机推荐、旧机升级、配置补全、搭配检查、预算分配、硬件原理解释，还是游戏帧率参考；再只读取相关 reference。预算、用途、色系、海景房、无光、ITX、背插、候选池和平台取舍读 `references/routing.md`；升级/补全/检查/解释和生产力工作流读 `references/workflows.md`；帧率读 `references/game-performance.md`；价格和异常低价读 `references/pricing.md`；兼容字段读 `references/compatibility.md`；收录边界读 `references/hardware-scope.md`。
+1. 识别需求。先判断是整机推荐、旧机升级、配置补全、搭配检查、预算分配、硬件原理解释，还是游戏帧率参考；再只读取相关 reference。预算段、用途识别、候选池和平台通用规则读 `references/routing.md`；3A/FPS、直播、本地 agent 硬件配置、ComfyUI、PS/剪辑/AE/Blender/UE/CAD、黑白海景房、无光、ITX、背插、水冷显卡、RTX PRO 等具体场景读 `references/scenarios.md`；升级/补全/检查/解释流程读 `references/workflows.md`；帧率读 `references/game-performance.md`；价格和异常低价读 `references/pricing.md`；兼容字段读 `references/compatibility.md`；收录边界读 `references/hardware-scope.md`。
 2. 查候选。运行 `scripts/query_components.py`，不要直接打开 `data/*.yaml`。完整配置至少分别查询 CPU、主板、内存、硬盘、显卡、散热、电源、机箱；中高端显卡、主板、SSD 和内存优先用 `--sort tier`；按 socket、DDR 代际、容量、显存、显卡长度、机箱尺寸、电源形态等依赖逐步收窄。`--budget` 是单品价格上限，不是整机预算。
 3. 做兼容性。最终推荐必须运行 `scripts/check_compatibility.py --strict`，传入所有核心配件。兼容性以脚本结果为准；有缺字段、复核信息或警告时，不要写成完整通过，优先换字段完整的候选，确实无字段时单独列人工复核项。
 4. 处理价格。离线库优先；离线库不足、价格日期超过 14 天或用户要求实时价格时，再搜索当前市场价。
