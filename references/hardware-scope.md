@@ -4,8 +4,8 @@
 
 - Intel: 12/13/14 代 Core 台式机 + Core Ultra 200S 台式机
   - Plus 只作为 250K Plus/250KF Plus/270K Plus 等具体型号后缀
-- AMD: Ryzen 5 / Ryzen 7 / Ryzen 9 AM5 台式机
-- 不收录: AM4、Intel 11 代及更早
+- AMD: Ryzen 5 / Ryzen 7 / Ryzen 9 AM5 台式机优先；AM4 只保留 Ryzen 5/7 X3D + B550 + DDR4 的低预算 FPS 例外路线
+- 不收录: AM4 非 X3D 新装机路线、A520 搭高功耗 X3D 默认方案、Intel 11 代及更早、二手/99新/翻新/矿卡
 
 ## GPU
 
