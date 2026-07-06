@@ -22,7 +22,7 @@ except Exception:
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 
-REQUIRED_SECTIONS = ["cpus", "motherboards", "memory", "storage", "gpus", "coolers", "psus"]
+REQUIRED_SECTIONS = ["cpus", "motherboards", "memory", "storage", "gpus", "coolers", "psus", "fans"]
 
 REQUIRED_FIELDS = {
     "cpus": {"id", "brand", "model", "platform", "socket"},
@@ -32,6 +32,7 @@ REQUIRED_FIELDS = {
     "gpus": {"id", "brand", "model"},
     "coolers": {"id", "brand", "model", "type"},
     "psus": {"id", "brand", "model", "wattage_w"},
+    "fans": {"id", "brand", "model", "fan_type", "default_recommend"},
 }
 
 # Fields that trigger warning (not error) when missing.
@@ -62,8 +63,36 @@ COVERAGE_FIELDS = {
     "storage": ["pcie_generation"],
     "coolers": ["type", "radiator_mm", "rgb"],
     "psus": ["wattage_w", "form_factor", "length_mm", "modular", "native_16pin_gpu_power"],
+    "fans": [
+        "size_mm", "color", "rgb", "blade_direction", "is_linkable",
+        "has_screen", "fan_type", "default_recommend", "pack_count",
+    ],
     "cases": ["gpu_length_mm", "cpu_cooler_height_mm", "radiator_support", "fan_mounts", "psu_length_mm"],
+    "displays": ["resolution", "size_inch", "refresh_rate_hz"],
 }
+
+CPU_AIR_COOLER_RE = re.compile(
+    r"(热管|单塔|双塔|下压|CPU\s*散热|CPU风冷|内存散热器|阿萨辛|大霜塔|冰立方|玄冰)",
+    re.IGNORECASE,
+)
+VALID_FAN_TYPES = {"case_fan", "radiator_fan_pack", "aio_frame"}
+VALID_BLADE_DIRECTIONS = {"normal", "reverse"}
+
+
+def _parse_int(value, default=0):
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        cleaned = re.sub(r"[^\d.-]", "", value)
+        if cleaned in ("", "-", ".", "-."):
+            return default
+        try:
+            return int(float(cleaned))
+        except ValueError:
+            return default
+    return default
 
 
 def _valid_fan_mounts(value):
@@ -151,6 +180,21 @@ def main():
                 raw_type = str(item.get("type") or "").lower()
                 if inferred_type == "liquid" and raw_type not in {"liquid", "water", "水冷"}:
                     errors.append(f"{section}.{item_id}: type={item.get('type')} conflicts with model-inferred liquid cooler")
+            if section == "fans":
+                if CPU_AIR_COOLER_RE.search(str(item.get("model", ""))):
+                    errors.append(f"{section}.{item_id}: CPU/memory cooler classified as fan")
+                if item.get("fan_type") not in VALID_FAN_TYPES:
+                    errors.append(f"{section}.{item_id}: invalid fan_type={item.get('fan_type')}")
+                if item.get("blade_direction") and item.get("blade_direction") not in VALID_BLADE_DIRECTIONS:
+                    errors.append(f"{section}.{item_id}: invalid blade_direction={item.get('blade_direction')}")
+                if item.get("has_screen") and item.get("rgb") is not True:
+                    errors.append(f"{section}.{item_id}: screen fan must be rgb=true")
+                if item.get("fan_type") == "aio_frame" and item.get("default_recommend") is not False:
+                    errors.append(f"{section}.{item_id}: aio_frame must not be default_recommend")
+                if item.get("size_mm"):
+                    size_mm = _parse_int(item.get("size_mm"))
+                    if size_mm < 80 or size_mm > 220:
+                        errors.append(f"{section}.{item_id}: invalid size_mm={item.get('size_mm')}")
 
         for field in sorted(WARN_FIELDS.get(section, set())):
             missing_items = [item.get("id", "<no-id>") for item in items if not item.get(field)]
@@ -205,6 +249,51 @@ def main():
             + (f" (sample: {sample})" if sample else "")
         )
     coverage_rows.extend(_coverage_rows("cases", case_items))
+
+    displays_path = DATA / "displays.yaml"
+    if displays_path.exists():
+        with displays_path.open("r", encoding="utf-8") as f:
+            displays = yaml.safe_load(f) or {}
+        display_items = displays.get("displays", [])
+        counts["displays"] = len(display_items)
+        missing_display_prices = []
+        missing_display_refresh = []
+        missing_display_brand = []
+        for item in display_items:
+            item_id = item.get("id", "<no-id>")
+            missing = {"id", "model", "resolution"} - set(item.keys())
+            if missing:
+                errors.append(f"displays.{item_id}: missing fields {missing}")
+            if not item.get("brand"):
+                missing_display_brand.append(item_id)
+            price_status = item.get("price_status", "")
+            if price_status and price_status not in VALID_PRICE_STATUSES:
+                errors.append(f"displays.{item_id}: invalid price_status '{price_status}'")
+            if price_status != "needs_market_quote" and item.get("price_cny") is None:
+                missing_display_prices.append(item_id)
+            if not item.get("refresh_rate_hz"):
+                missing_display_refresh.append(item_id)
+        if missing_display_prices:
+            sample = ", ".join(missing_display_prices[:5])
+            warnings.append(
+                f"displays: {len(missing_display_prices)}/{len(display_items)} missing price_cny"
+                + (f" (sample: {sample})" if sample else "")
+            )
+        if missing_display_refresh:
+            sample = ", ".join(missing_display_refresh[:5])
+            warnings.append(
+                f"displays: {len(missing_display_refresh)}/{len(display_items)} missing refresh_rate_hz"
+                + (f" (sample: {sample})" if sample else "")
+            )
+        if missing_display_brand:
+            sample = ", ".join(missing_display_brand[:5])
+            warnings.append(
+                f"displays: {len(missing_display_brand)}/{len(display_items)} missing brand"
+                + (f" (sample: {sample})" if sample else "")
+            )
+        coverage_rows.extend(_coverage_rows("displays", display_items))
+    else:
+        notes.append("displays.yaml: optional explicit monitor database missing")
 
     game_fps_path = DATA / "game_fps.yaml"
     if not game_fps_path.exists():

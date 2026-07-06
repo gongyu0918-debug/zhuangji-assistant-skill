@@ -40,7 +40,14 @@ CATEGORIES = {
     "cooler": "coolers",
     "psu": "psus",
     "case": "cases",  # from cases.yaml
+    "display": "displays",  # from displays.yaml, explicit only
+    "monitor": "displays",  # alias for display
+    "fan": "fans",  # explicit only, not part of all
 }
+
+CORE_CATEGORIES = ("cpu", "mb", "memory", "storage", "gpu", "cooler", "psu", "case")
+DISPLAY_CATEGORIES = {"display", "monitor"}
+FAN_CATEGORIES = {"fan"}
 
 DISPLAY_NAMES = {
     "cpu": "CPU",
@@ -51,6 +58,9 @@ DISPLAY_NAMES = {
     "cooler": "散热",
     "psu": "电源",
     "case": "机箱",
+    "display": "显示器",
+    "monitor": "显示器",
+    "fan": "风扇",
 }
 
 # Summary fields per category — minimal fields needed for first-pass narrowing.
@@ -78,7 +88,15 @@ SUMMARY_FIELDS_BY_CATEGORY = {
     ],
     "case": SUMMARY_BASE_FIELDS + [
         "colors", "motherboard_support", "gpu_length_mm", "cpu_cooler_height_mm",
-        "radiator_support", "fan_mounts", "fan_slots_count", "psu_support", "psu_length_mm", "is_showcase",
+        "radiator_support", "fan_mounts", "fan_slots_count", "psu_support", "psu_length_mm",
+        "air_flow_type", "has_dust_filter", "is_showcase",
+    ],
+    "display": SUMMARY_BASE_FIELDS + ["resolution", "size_inch", "refresh_rate_hz"],
+    "monitor": SUMMARY_BASE_FIELDS + ["resolution", "size_inch", "refresh_rate_hz"],
+    "fan": SUMMARY_BASE_FIELDS + [
+        "size_mm", "pack_count", "color", "rgb", "blade_direction",
+        "is_linkable", "has_screen", "radiator_fan_bundle_mm",
+        "fan_type", "default_recommend",
     ],
 }
 
@@ -185,6 +203,16 @@ def load_cases():
         return yaml.safe_load(f) or {}
 
 
+@lru_cache(maxsize=1)
+def load_displays():
+    """Load displays.yaml when the user explicitly asks for a monitor."""
+    path = DATA / "displays.yaml"
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
 _PRICE_FLOORS = None
 
 
@@ -210,6 +238,20 @@ def normalize_color(value):
     for normalized, aliases in COLOR_ALIASES.items():
         if text in aliases:
             return normalized
+    return text
+
+
+def normalize_resolution(value):
+    """Normalize common display resolution aliases for filtering."""
+    text = compact_text(value)
+    if not text:
+        return ""
+    if "2160" in text or "4K" in text:
+        return "2160P"
+    if "1440" in text or "2K" in text or "QHD" in text:
+        return "1440P"
+    if "1080" in text or "1K" in text or "FHD" in text:
+        return "1080P"
     return text
 
 
@@ -242,6 +284,20 @@ def _parse_int(value, default=0):
 def item_text(item):
     """Join searchable fields for positive candidate-pool scoring."""
     return " ".join(str(item.get(k, "")) for k in ("brand", "model", "series", "id"))
+
+
+def infer_display_brand(item):
+    """Best-effort brand display for monitor rows whose model already starts with the brand."""
+    if item.get("brand"):
+        return item.get("brand")
+    model = str(item.get("model") or "").strip()
+    if model:
+        token = re.split(r"\s+", model, maxsplit=1)[0].strip()
+        if token and not re.match(r"^\d", token):
+            return token
+    item_id = str(item.get("id") or "")
+    match = re.match(r"display-([^-]+)-", item_id)
+    return match.group(1) if match else ""
 
 
 def has_candidate_signal(item, signals):
@@ -609,6 +665,75 @@ def _matches_max_length(section, item, max_length):
     return True
 
 
+def _matches_resolution(item, requested):
+    wanted = normalize_resolution(requested)
+    if not wanted:
+        return True
+    item_resolution = normalize_resolution(item.get("resolution") or item.get("model") or item.get("id"))
+    return wanted == item_resolution or wanted in item_resolution
+
+
+def _matches_min_refresh(item, min_refresh):
+    if not min_refresh:
+        return True
+    refresh = _parse_num(item.get("refresh_rate_hz"))
+    return bool(refresh) and refresh >= _parse_num(min_refresh)
+
+
+def _matches_air_flow(item, requested):
+    wanted = compact_text(requested)
+    if not wanted or wanted == "ANY":
+        return True
+    item_type = compact_text(item.get("air_flow_type"))
+    return wanted == item_type
+
+
+def _matches_optional_bool(item, field, requested):
+    if requested is None:
+        return True
+    return bool(item.get(field)) == bool(requested)
+
+
+def _matches_fan_size(item, fan_size):
+    if not fan_size:
+        return True
+    return _parse_int(item.get("size_mm")) == _parse_int(fan_size)
+
+
+def _matches_radiator_bundle(item, radiator_bundle):
+    if not radiator_bundle:
+        return True
+    return _parse_int(item.get("radiator_fan_bundle_mm")) == _parse_int(radiator_bundle)
+
+
+def _matches_fan_type(item, fan_type):
+    if not fan_type or fan_type == "any":
+        return True
+    return str(item.get("fan_type") or "") == fan_type
+
+
+def _fan_tier(item):
+    """Score fans by presentation features and visible planning fields."""
+    score = 0
+    if item.get("has_screen"):
+        score += 10
+    if item.get("is_linkable"):
+        score += 8
+    if item.get("is_radiator_fan_bundle"):
+        score += 5
+    if item.get("rgb"):
+        score += 3
+    if _parse_int(item.get("size_mm")) in (120, 140):
+        score += 2
+    if _parse_int(item.get("pack_count")) >= 3:
+        score += 2
+    if item.get("fan_type") == "aio_frame":
+        score -= 30
+    if item.get("price_cny") and item.get("price_date"):
+        score += 1
+    return score
+
+
 def parse_fan_slots_count(value):
     """Best-effort total fan slot count from compact case fan_mounts text."""
     if value in (None, "", [], {}):
@@ -717,7 +842,10 @@ def query(category=None, budget=None, platform=None, color=None,
           rgb=None, limit=20, has_price_only=True, showcase=None,
           include_legacy=False, sort="asc", socket=None, chipset=None,
           memory_gen=None, form_factor=None, max_length=None, gpu_cooling="air",
-          gpu_chip=None, min_vram=None, min_capacity=None, include_workstation_gpu=False):
+          gpu_chip=None, min_vram=None, min_capacity=None, include_workstation_gpu=False,
+          resolution=None, min_refresh=None, air_flow=None, dust_filter=None,
+          fan_size=None, blade_direction=None, linkable=None, screen=None,
+          radiator_bundle=None, fan_type=None):
     """查询配件。返回匹配的配件列表。"""
     if gpu_cooling == "any":
         gpu_cooling = None
@@ -743,14 +871,67 @@ def query(category=None, budget=None, platform=None, color=None,
                 case_type = str(item.get("is_showcase", False))
                 if case_type != "True" and not item.get("is_showcase"):
                     continue
+            if air_flow and not _matches_air_flow(item, air_flow):
+                continue
+            if dust_filter is not None and bool(item.get("has_dust_filter")) != bool(dust_filter):
+                continue
             results.append(_summarize_case(item))
         _sort_results(results, sort, "case")
         return results[:limit]
 
+    if category in DISPLAY_CATEGORIES:
+        displays_data = load_displays()
+        for item in displays_data.get("displays", []):
+            if has_price_only and item.get("price_status") == "needs_market_quote":
+                continue
+            if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
+                continue
+            if not _matches_resolution(item, resolution):
+                continue
+            if not _matches_min_refresh(item, min_refresh):
+                continue
+            if color and not color_matches(item, color):
+                continue
+            result = dict(item)
+            if not result.get("brand"):
+                result["brand"] = infer_display_brand(result)
+            results.append(result)
+        _sort_results(results, sort, "display")
+        return results[:limit]
+
+    if category in FAN_CATEGORIES:
+        lib = load_components()
+        for item in lib.get("fans", []):
+            if has_price_only and item.get("price_status") == "needs_market_quote":
+                continue
+            if not include_legacy and item.get("default_recommend") is False:
+                continue
+            if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
+                continue
+            if color and not color_matches(item, color):
+                continue
+            if not rgb_matches(item, rgb):
+                continue
+            if not _matches_fan_size(item, fan_size):
+                continue
+            if blade_direction and blade_direction != "any" and item.get("blade_direction") != blade_direction:
+                continue
+            if not _matches_optional_bool(item, "is_linkable", linkable):
+                continue
+            if not _matches_optional_bool(item, "has_screen", screen):
+                continue
+            if not _matches_radiator_bundle(item, radiator_bundle):
+                continue
+            if not _matches_fan_type(item, fan_type):
+                continue
+            results.append(item)
+        _sort_results(results, sort, "fan")
+        return results[:limit]
+
     # Query components.yaml
     lib = load_components()
-    categories_to_search = [CATEGORIES[category]] if category and category in CATEGORIES \
-        else [v for k, v in CATEGORIES.items() if k != "case"]
+    categories_to_search = [CATEGORIES[category]] if category and category in CORE_CATEGORIES \
+        else [CATEGORIES[k] for k in CORE_CATEGORIES if k != "case"]
 
     for sec in categories_to_search:
         for item in lib.get(sec, []):
@@ -1046,6 +1227,8 @@ def _tier_sort_key(category, item):
         return (-_cooler_tier(item), price)
     if category == "psu":
         return (-_psu_tier(item), price)
+    if category == "fan":
+        return (-_fan_tier(item), price)
     return (0, price)
 
 
@@ -1053,10 +1236,10 @@ def query_all(budget=None, platform=None, color=None, rgb=None, limit=5,
               has_price_only=True, include_legacy=False, sort="asc", socket=None,
               chipset=None, memory_gen=None, form_factor=None, max_length=None,
               gpu_cooling="air", gpu_chip=None, min_vram=None, min_capacity=None,
-              include_workstation_gpu=False, showcase=None):
-    """Return candidates grouped by category for smoke/progressive disclosure."""
+              include_workstation_gpu=False, showcase=None, air_flow=None, dust_filter=None):
+    """Return core PC candidates grouped by category for smoke/progressive disclosure."""
     grouped = {}
-    for category in CATEGORIES:
+    for category in CORE_CATEGORIES:
         grouped[category] = query(
             category=category,
             budget=budget,
@@ -1078,6 +1261,8 @@ def query_all(budget=None, platform=None, color=None, rgb=None, limit=5,
             min_capacity=min_capacity,
             include_workstation_gpu=include_workstation_gpu,
             showcase=showcase if category == "case" else None,
+            air_flow=air_flow if category == "case" else None,
+            dust_filter=dust_filter if category == "case" else None,
         )
     return grouped
 
@@ -1101,6 +1286,8 @@ def _summarize_case(case):
         "fan_slots_count": parse_fan_slots_count(fan_mounts),
         "psu_support": case.get("psu_support", ["ATX"]),
         "psu_length_mm": case.get("psu_length_mm", 0),
+        "air_flow_type": case.get("air_flow_type", ""),
+        "has_dust_filter": case.get("has_dust_filter"),
         "is_showcase": case.get("is_showcase", False),
     }
 
@@ -1159,6 +1346,38 @@ def display_extra(category, item):
             parts.append("PSU=" + "/".join(str(x) for x in item.get("psu_support")))
         if item.get("psu_length_mm"):
             parts.append(f"PSU≤{item.get('psu_length_mm')}mm")
+        if item.get("air_flow_type"):
+            parts.append(f"airflow={item.get('air_flow_type')}")
+        if item.get("has_dust_filter") is not None:
+            parts.append("dust_filter=" + ("yes" if item.get("has_dust_filter") else "no"))
+        return " ".join(parts)
+    if category == "fan":
+        parts = []
+        if item.get("size_mm"):
+            parts.append(f"{item.get('size_mm')}mm")
+        if item.get("pack_count"):
+            parts.append(f"x{item.get('pack_count')}")
+        if item.get("blade_direction"):
+            direction = "反页" if item.get("blade_direction") == "reverse" else "正页"
+            parts.append(direction)
+        parts.append("RGB" if item.get("rgb") else "无光")
+        if item.get("is_linkable"):
+            parts.append("积木/串联")
+        if item.get("has_screen"):
+            parts.append("带屏")
+        if item.get("radiator_fan_bundle_mm"):
+            parts.append(f"{item.get('radiator_fan_bundle_mm')}一体式风扇")
+        if item.get("fan_type") == "aio_frame":
+            parts.append("无风扇水冷框架")
+        return " ".join(parts)
+    if category in DISPLAY_CATEGORIES:
+        parts = []
+        if item.get("resolution"):
+            parts.append(str(item.get("resolution")))
+        if item.get("size_inch"):
+            parts.append(f"{item.get('size_inch')}英寸")
+        if item.get("refresh_rate_hz"):
+            parts.append(f"{item.get('refresh_rate_hz')}Hz")
         return " ".join(parts)
     return ""
 
@@ -1186,6 +1405,19 @@ def main():
     parser.add_argument("--color", help="颜色过滤 (black/white)")
     parser.add_argument("--rgb", choices=["yes", "no"], help="RGB 过滤")
     parser.add_argument("--showcase", action="store_true", help="只返回海景房机箱")
+    parser.add_argument("--air-flow", choices=["airflow", "mesh", "showcase", "standard", "any"],
+                        help="机箱风道类型过滤；养宠/风道优先可用 airflow 或 mesh")
+    parser.add_argument("--dust-filter", choices=["yes", "no"], help="机箱防尘/防毛过滤")
+    parser.add_argument("--fan-size", type=int, help="风扇尺寸过滤 (120/140 等 mm)")
+    parser.add_argument("--blade-direction", choices=["normal", "reverse", "any"],
+                        help="风扇正反页过滤: normal=正页/正叶, reverse=反页/反叶")
+    parser.add_argument("--linkable", choices=["yes", "no"], help="风扇是否积木/串联/磁吸")
+    parser.add_argument("--screen", choices=["yes", "no"], help="风扇是否带屏幕/数显")
+    parser.add_argument("--radiator-bundle", type=int, help="一体式/冷排风扇套装尺寸 (240/360/420)")
+    parser.add_argument("--fan-type", choices=["case_fan", "radiator_fan_pack", "aio_frame", "any"],
+                        help="风扇类型过滤；aio_frame 为无风扇水冷框架，默认不推荐")
+    parser.add_argument("--resolution", help="显示器分辨率过滤 (1080p/1K/1440p/2K/2160p/4K)")
+    parser.add_argument("--min-refresh", type=int, help="显示器最低刷新率 (Hz)")
     parser.add_argument("--sort", choices=["asc", "desc", "tier"], default="asc",
                         help="排序: asc=价格升序(默认), desc=价格降序, tier=显卡芯片/主板芯片组等级优先,同等级按价格升序")
     parser.add_argument("--limit", type=int, default=20, help="最大返回数")
@@ -1216,6 +1448,8 @@ def main():
             min_capacity=args.min_capacity,
             include_workstation_gpu=args.include_workstation_gpu,
             showcase=args.showcase,
+            air_flow=args.air_flow,
+            dust_filter=(True if args.dust_filter == "yes" else False) if args.dust_filter else None,
         )
         if not args.detail:
             output = {
@@ -1261,6 +1495,16 @@ def main():
         min_vram=args.min_vram,
         min_capacity=args.min_capacity,
         include_workstation_gpu=args.include_workstation_gpu,
+        resolution=args.resolution,
+        min_refresh=args.min_refresh,
+        air_flow=args.air_flow if args.category == "case" else None,
+        dust_filter=(True if args.dust_filter == "yes" else False) if args.dust_filter else None,
+        fan_size=args.fan_size if args.category == "fan" else None,
+        blade_direction=args.blade_direction if args.category == "fan" else None,
+        linkable=(True if args.linkable == "yes" else False) if args.category == "fan" and args.linkable else None,
+        screen=(True if args.screen == "yes" else False) if args.category == "fan" and args.screen else None,
+        radiator_bundle=args.radiator_bundle if args.category == "fan" else None,
+        fan_type=args.fan_type if args.category == "fan" else None,
     )
 
     # Progressive disclosure: summary by default, detail only with --detail
