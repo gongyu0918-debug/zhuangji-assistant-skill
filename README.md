@@ -4,7 +4,7 @@
 
 - Skill slug: `zhuangji-assistant-skill`
 - 展示名称: `DIY装机助手`
-- 当前版本: `0.0.13`
+- 当前版本: `0.0.14`
 - 许可证: MIT
 - 价格参考日期: 以所选条目 `price_date` 为准；当前库 metadata 为 `2026-07-09`
 - 价格来源说明: 数据来自网络公开信息整理，仅供预算参考，不代表实时成交价或可下单价格。
@@ -61,6 +61,7 @@ python scripts/validate_library.py
 ├── data/
 │   ├── components.yaml
 │   ├── cases.yaml
+│   ├── displays.yaml
 │   ├── game_fps.yaml
 │   └── price_floors.yaml
 ├── references/

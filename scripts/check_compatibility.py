@@ -238,6 +238,28 @@ class CompatibilityChecker:
         m2_slots = self._parse_num(mb.get("m2_slots", 0))
         m2_count = sum(1 for s in storage_list
                        if "M.2" in s.get("form_factor", "") or "M.2" in s.get("interface", ""))
+        m2_sata_count = sum(
+            1 for s in storage_list
+            if "M.2" in str(s.get("form_factor", ""))
+            and "SATA" in str(s.get("interface", "")).upper()
+        )
+        if m2_sata_count:
+            support_value = (
+                mb.get("m2_sata_slots")
+                or mb.get("m2_sata_support")
+                or mb.get("sata_m2_slots")
+            )
+            if support_value in (True, "true", "yes", "支持"):
+                support_slots = m2_sata_count
+            else:
+                support_slots = self._parse_num(support_value)
+            if support_slots:
+                if m2_sata_count > support_slots:
+                    return {"type": "error",
+                        "msg": f"M.2 SATA硬盘数量【{m2_sata_count}个】超过主板M.2 SATA支持数【{support_slots}个】"}
+            else:
+                return {"type": "warn",
+                    "msg": "M.2 SATA硬盘需复核主板M.2插槽是否支持SATA模式；多数新主板M.2仅支持PCIe/NVMe"}
         if m2_count > 0 and not m2_slots:
             return {"type": "msg", "msg": "主板缺少M.2接口数量信息，需下单前复核"}
         if m2_count > 0 and m2_slots > 0 and m2_count > m2_slots:
@@ -468,7 +490,11 @@ class CompatibilityChecker:
         self._add_check(checks, "硬盘↔主板", self.check_storage_motherboard(storage, mb))
         self._add_check(checks, "SATA接口", self.check_sata_ports(storage, mb), "没有SATA设备或缺少SATA信息")
         self._add_check(checks, "电源功率", self.check_psu_power(psu, cpu, gpus))
-        self._add_check(checks, "显卡供电", self.check_gpu_power_connector(gpus[0] if gpus else None, psu), "显卡未声明特殊供电需求")
+        for i, gpu in enumerate(gpus):
+            label = f"显卡{i+1}供电" if len(gpus) > 1 else "显卡供电"
+            self._add_check(checks, label, self.check_gpu_power_connector(gpu, psu), "显卡未声明特殊供电需求")
+        if not gpus:
+            self._add_check(checks, "显卡供电", {}, "未选择显卡，跳过显卡供电检查")
         self._add_check(checks, "散热↔机箱", self.check_cooler_case(cooler, case))
         self._add_check(checks, "机箱↔主板", self.check_case_motherboard(case, mb))
         self._add_check(checks, "机箱↔电源", self.check_case_psu(case, psu), "未检查机箱电源尺寸")

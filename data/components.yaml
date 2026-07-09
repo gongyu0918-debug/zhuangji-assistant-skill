@@ -788,13 +788,13 @@ cpus:
   series: Ryzen 9
   boost_clock: 5.6GHz
   power_w: 65
-- id: cpu-intel-amdryzen59500f
-  brand: INTEL
+- id: cpu-amd-amdryzen59500f
+  brand: AMD
   model: AMD Ryzen5 9500F
   price_cny: 999
   price_status: channel_quote
   price_date: '2026-07-09'
-  platform: Intel
+  platform: AMD
   socket: AM5
   cores_threads: 6C/12T
   series: Ryzen 5
@@ -36888,7 +36888,7 @@ gpus:
   chip: RTX 5080
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: 其他
+  memory_type: GDDR7
   length_mm: 320
   color: black
   rgb: false
@@ -37233,7 +37233,7 @@ gpus:
   chip: RTX 5080
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: 其他
+  memory_type: GDDR7
   length_mm: 360
   color: black
   rgb: true
@@ -37406,7 +37406,7 @@ gpus:
   chip: RTX 5070 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: GDRR7
+  memory_type: GDDR7
   length_mm: 330
   color: black
   rgb: true
@@ -37493,7 +37493,7 @@ gpus:
   chip: RTX 5070 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: GDRR7
+  memory_type: GDDR7
   length_mm: 400
   color: black
   rgb: true
@@ -37649,7 +37649,7 @@ gpus:
   chip: RTX 5080
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: 其他
+  memory_type: GDDR7
   length_mm: 360
   color: white
   rgb: true
@@ -38105,7 +38105,7 @@ gpus:
   chip: RTX 5080
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: 其他
+  memory_type: GDDR7
   length_mm: 200
   color: black
   rgb: true
@@ -38464,7 +38464,7 @@ gpus:
   chip: RTX 5060 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: 其他
+  memory_type: GDDR7
   length_mm: 208
   color: black
   rgb: false
@@ -38536,7 +38536,7 @@ gpus:
   chip: RTX 5060
   gpu_vendor: NVIDIA
   vram_gb: 8
-  memory_type: GDRR7
+  memory_type: GDDR7
   length_mm: 197
   color: black
   rgb: false
@@ -38691,7 +38691,7 @@ gpus:
   chip: RTX 5060
   gpu_vendor: NVIDIA
   vram_gb: 8
-  memory_type: GDRR7
+  memory_type: GDDR7
   length_mm: 250
   color: black
   rgb: false
@@ -38725,7 +38725,7 @@ gpus:
   chip: RTX 5070 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: HDMI，DP
+  memory_type: GDDR7
   color: white
   rgb: false
   power_connectors:
@@ -39192,7 +39192,7 @@ gpus:
   chip: RTX 5080
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: 其他
+  memory_type: GDDR7
   length_mm: 400
   color: white
   rgb: true
@@ -39880,7 +39880,7 @@ gpus:
   chip: RTX 5090D
   gpu_vendor: NVIDIA
   vram_gb: 32
-  memory_type: 其他
+  memory_type: GDDR7
   length_mm: 360
   color: white
   rgb: true
@@ -41608,7 +41608,7 @@ gpus:
   chip: RTX 5060 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: NVIDIA
+  memory_type: GDDR7
   color: black
   rgb: true
   power_connectors:
@@ -41733,7 +41733,7 @@ gpus:
   chip: RTX 5070
   gpu_vendor: NVIDIA
   vram_gb: 12
-  memory_type: GDRR7
+  memory_type: GDDR7
   color: black
   rgb: true
   power_connectors:
@@ -41972,7 +41972,7 @@ gpus:
   chip: RX 9070 XT
   gpu_vendor: AMD
   vram_gb: 16
-  memory_type: 16GB
+  memory_type: GDDR6
   color: black
   rgb: true
   power_connectors:
@@ -42729,7 +42729,7 @@ gpus:
   chip: RTX 5080
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: DDR7
+  memory_type: GDDR7
   length_mm: 360
   color: white
   rgb: true
@@ -43126,7 +43126,7 @@ gpus:
   chip: RTX 5070 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: 16GB
+  memory_type: GDDR7
   color: white
   rgb: true
   power_connectors:
@@ -43401,7 +43401,7 @@ gpus:
   chip: RX 9070
   gpu_vendor: AMD
   vram_gb: 16
-  memory_type: DDR5
+  memory_type: GDDR6
   color: black
   rgb: true
   power_connectors:
@@ -44326,7 +44326,7 @@ gpus:
   chip: RTX 5090D
   gpu_vendor: NVIDIA
   vram_gb: 32
-  memory_type: 其他
+  memory_type: GDDR7
   length_mm: 200
   color: black
   rgb: false
@@ -44397,7 +44397,7 @@ gpus:
   chip: RTX 5060
   gpu_vendor: NVIDIA
   vram_gb: 8
-  memory_type: GDRR7
+  memory_type: GDDR7
   length_mm: 250
   color: white
   rgb: false
@@ -45402,7 +45402,7 @@ gpus:
   chip: RTX 5060 Ti
   gpu_vendor: NVIDIA
   vram_gb: 8
-  memory_type: 其他
+  memory_type: GDDR7
   color: black
   rgb: true
   power_connectors:
@@ -45559,7 +45559,7 @@ gpus:
   chip: RTX 5060
   gpu_vendor: NVIDIA
   vram_gb: 8
-  memory_type: NVIDIA
+  memory_type: GDDR7
   color: black
   rgb: false
   power_connectors:
@@ -46322,7 +46322,7 @@ gpus:
   chip: RTX 5060 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: 型 GDDR7
+  memory_type: GDDR7
   color: black
   rgb: false
   power_connectors: []
@@ -46460,7 +46460,7 @@ gpus:
   chip: RTX 5060 Ti
   gpu_vendor: NVIDIA
   vram_gb: 8
-  memory_type: DDR7
+  memory_type: GDDR7
   color: white
   rgb: true
   power_connectors:
@@ -48017,7 +48017,7 @@ gpus:
   chip: RTX 5070 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: GDRR7
+  memory_type: GDDR7
   length_mm: 400
   color: black
   rgb: true
@@ -48035,7 +48035,7 @@ gpus:
   chip: RTX 5070 Ti
   gpu_vendor: NVIDIA
   vram_gb: 16
-  memory_type: GDRR7
+  memory_type: GDDR7
   length_mm: 400
   color: black
   rgb: true

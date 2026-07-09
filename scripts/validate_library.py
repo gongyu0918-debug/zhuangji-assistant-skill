@@ -77,6 +77,10 @@ CPU_AIR_COOLER_RE = re.compile(
 )
 VALID_FAN_TYPES = {"case_fan", "radiator_fan_pack", "aio_frame"}
 VALID_BLADE_DIRECTIONS = {"normal", "reverse"}
+VALID_GPU_MEMORY_TYPES = {
+    "GDDR5", "GDDR5X", "GDDR6", "GDDR6X", "GDDR7", "GDDR7 ECC",
+    "HBM2", "HBM2E", "HBM3", "HBM3E",
+}
 
 
 def _parse_int(value, default=0):
@@ -119,6 +123,25 @@ def _id_not_normalized(item_id):
     return text.startswith("cat-") or "--" in text or bool(SOURCE_ID_PATTERN.search(text))
 
 
+def _check_cpu_vendor_consistency(item):
+    item_id = str(item.get("id", ""))
+    brand = str(item.get("brand", "")).upper()
+    model = str(item.get("model", "")).upper()
+    platform = str(item.get("platform", "")).upper()
+    socket = str(item.get("socket", "")).upper()
+    text = f"{brand} {model} {platform} {socket} {item_id.upper()}"
+    if "RYZEN" in text or "AMD" in model or socket.startswith("AM"):
+        valid_id = item_id.startswith("cpu-amd-") or item_id.startswith("demo-cpu-amd-")
+        if brand != "AMD" or platform != "AMD" or not socket.startswith("AM") or not valid_id:
+            return "AMD/Ryzen CPU must use AMD brand/platform/socket/id prefix"
+    intel_tokens = ("INTEL", "CORE I", "CORE ULTRA", "PENTIUM", "CELERON")
+    if any(token in text for token in intel_tokens) or socket.startswith("LGA"):
+        valid_id = item_id.startswith("cpu-intel-") or item_id.startswith("demo-cpu-intel-")
+        if brand != "INTEL" or platform != "INTEL" or not socket.startswith("LGA") or not valid_id:
+            return "Intel CPU must use Intel brand/platform/socket/id prefix"
+    return None
+
+
 def main():
     errors = []
     warnings = []
@@ -157,6 +180,10 @@ def main():
                 warnings.append(f"{section}.{item_id}: needs_market_quote but has price_cny={price_cny}")
             if price_status != "needs_market_quote" and price_cny is None:
                 warnings.append(f"{section}.{item_id}: has price_status={price_status} but price_cny is None")
+            if section == "cpus":
+                consistency_error = _check_cpu_vendor_consistency(item)
+                if consistency_error:
+                    errors.append(f"{section}.{item_id}: {consistency_error}")
             if section == "gpus" and item.get("length_mm"):
                 try:
                     gpu_length = int(item.get("length_mm"))
@@ -165,6 +192,9 @@ def main():
                 except (TypeError, ValueError):
                     errors.append(f"{section}.{item_id}: invalid length_mm={item.get('length_mm')}")
             if section == "gpus":
+                memory_type = str(item.get("memory_type") or "").strip().upper()
+                if memory_type and memory_type not in VALID_GPU_MEMORY_TYPES:
+                    errors.append(f"{section}.{item_id}: invalid memory_type={item.get('memory_type')}")
                 inferred_vram = infer_gpu_vram(item)
                 current_vram = item.get("vram_gb")
                 if inferred_vram and current_vram:
