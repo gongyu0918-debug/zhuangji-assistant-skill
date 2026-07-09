@@ -99,6 +99,47 @@ class CompatibilityChecker:
                    "EATX": "EATX", "ATX": "ATX"}
         return mapping.get(ff, ff)
 
+    def _cpu_has_integrated_graphics(self, cpu):
+        """Conservatively infer whether the CPU can provide display output."""
+        if not cpu:
+            return False
+        explicit = cpu.get("integrated_graphics")
+        if explicit is None:
+            explicit = cpu.get("has_integrated_graphics")
+        if explicit is not None:
+            if isinstance(explicit, bool):
+                return explicit
+            text = str(explicit).strip().lower()
+            if text in ("true", "yes", "y", "1", "有", "核显", "集显"):
+                return True
+            if text in ("false", "no", "n", "0", "无", "none", "no igpu"):
+                return False
+
+        model = str(cpu.get("model", ""))
+        brand = str(cpu.get("brand", ""))
+        text = f"{brand} {model}".upper()
+        compact = self._normalize(text)
+
+        if "INTEL" in text or "CORE" in text or compact.startswith(("I3", "I5", "I7", "I9", "U5", "U7", "U9")):
+            # Intel desktop F/KF suffix SKUs normally disable integrated graphics.
+            if re.search(r"\b(?:I[3579]|CORE\s+ULTRA\s+[579]|U[579])[-\s]?\d{3,5}[A-Z]*F\b", text):
+                return False
+            if re.search(r"\b\d{3,5}[A-Z]*F\b", text):
+                return False
+            return True
+
+        if "AMD" in text or "RYZEN" in text:
+            # Ryzen G/GT APUs and mainstream AM5 Ryzen 7000/8000/9000 non-F SKUs have display output.
+            if re.search(r"\b\d{4,5}F\b", text):
+                return False
+            if re.search(r"\b\d{4,5}(?:G|GE|GT)\b", text):
+                return True
+            match = re.search(r"\b(?:RYZEN\s+\d\s*)?(\d{4,5})(?:X3D|X)?\b", text)
+            if match:
+                number = int(match.group(1))
+                return number >= 7000
+        return False
+
     # --- 11 项检查函数 ---
 
     def check_cpu_motherboard(self, cpu, mb):
@@ -403,7 +444,6 @@ class CompatibilityChecker:
                 ("主板", mb),
                 ("内存", mem),
                 ("硬盘", storage),
-                ("显卡", gpus),
                 ("电源", psu),
                 ("散热", cooler),
                 ("机箱", case),
@@ -411,7 +451,11 @@ class CompatibilityChecker:
             for label, value in required:
                 if value is None or value == []:
                     checks.append(("完整性", {"type": "error", "msg": f"严格模式缺少{label}"}))
+            if not gpus and not self._cpu_has_integrated_graphics(cpu):
+                checks.append(("完整性", {"type": "error", "msg": "严格模式缺少独显，且CPU未确认带核显"}))
         self._add_check(checks, "CPU↔主板", self.check_cpu_motherboard(cpu, mb))
+        if not gpus and self._cpu_has_integrated_graphics(cpu):
+            self._add_check(checks, "显示输出", {"type": "success", "msg": "未选择独显，CPU可提供核显显示输出"})
         mem_results = self.check_memory_motherboard(mem, mb)
         for r in mem_results:
             self._add_check(checks, "内存↔主板", r)
