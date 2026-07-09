@@ -1,7 +1,7 @@
 interface:
   display_name: "DIY装机助手"
-  short_description: "预算装机、硬件DIY、配电脑、升级补全和兼容检查"
-  default_prompt: "使用 $pc-build-assistant 根据我的预算和用途推荐、升级、补全或检查一套价格完整、兼容性已核对的主机配置；装机场景可覆盖游戏、海景房、AI 绘图、剪辑、CAD，以及为本地 AI 编程/终端 agent 工作流配电脑"
+  short_description: "预算装机、硬件DIY、配电脑、升级补全、兼容检查和硬件选择问答"
+  default_prompt: "使用 $pc-build-assistant 根据我的预算和用途推荐、升级、补全或检查一套价格完整、兼容性已核对的主机配置，也可以回答 Intel/AMD、内存容量、散热、电源、主板等硬件选择问题；装机场景可覆盖游戏、海景房、AI 绘图、剪辑、CAD，以及为本地 AI 编程/终端 agent 工作流配电脑"
 
 policy:
   allow_implicit_invocation: true

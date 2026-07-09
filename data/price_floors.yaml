@@ -1,10 +1,11 @@
 metadata:
-  price_date: 2026-07-06
+  price_date: 2026-07-09
   source_type: network_public_price_observation
   scope: default_lower_bound_only
   notes:
     - CPU uses explicit daily low price floors only; it does not use same-model outlier grouping.
     - Floors are lower-bound trust references for default recommendations, not upper price caps.
+    - 2026-07-09 user-provided daily floor images cover GPUs, memory kits and SSDs; CPU floors are retained until the next explicit CPU daily floor evidence.
 cpus:
   - model: U7-270KPLUS
     floor_cny: 1929
@@ -61,46 +62,55 @@ gpus:
     floor_cny: 27429
   - chip: RTX5090DV2
     min_vram_gb: 24
-    floor_cny: 19100
+    floor_cny: 19399
   - chip: RTX5080
     min_vram_gb: 16
-    floor_cny: 8750
+    floor_cny: 8888
   - chip: RTX5070TI
     min_vram_gb: 16
     floor_cny: 7099
   - chip: RTX5070
     min_vram_gb: 12
-    floor_cny: 4698
+    floor_cny: 4789
   - chip: RTX5060TI
     min_vram_gb: 16
-    floor_cny: 3794
+    floor_cny: 3860
   - chip: RTX5060TI
     max_vram_gb: 8
-    floor_cny: 2779
+    floor_cny: 2799
   - chip: RTX5060
     min_vram_gb: 8
-    floor_cny: 2298
+    floor_cny: 2349
   - chip: RTX5050
     min_vram_gb: 8
-    floor_cny: 1874
+    floor_cny: 1850
+  - chip: RTX4070SUPER
+    min_vram_gb: 12
+    floor_cny: 3415
+  - chip: RTX3060TI
+    min_vram_gb: 8
+    floor_cny: 1350
   - chip: RX9070XT
     min_vram_gb: 16
-    floor_cny: 4240
+    floor_cny: 4249
   - chip: RX9070GRE
     min_vram_gb: 12
-    floor_cny: 3199
+    floor_cny: 3279
   - chip: RX9070
     min_vram_gb: 16
-    floor_cny: 3769
+    floor_cny: 3808
   - chip: RX9060XT
     min_vram_gb: 16
-    floor_cny: 2485
+    floor_cny: 2549
   - chip: RX9060XT
     max_vram_gb: 8
-    floor_cny: 2059
+    floor_cny: 2049
+  - chip: RX7900XT
+    min_vram_gb: 20
+    floor_cny: 3184
   - chip: ARCB580
     min_vram_gb: 12
-    floor_cny: 1848
+    floor_cny: 1899
   - chip: ARCB570
     min_vram_gb: 10
     floor_cny: 1484
@@ -108,37 +118,37 @@ memory:
   - generation: DDR4
     capacity_gb: 16
     module_count: 2
-    floor_cny: 379
+    floor_cny: 375
   - generation: DDR4
     capacity_gb: 32
     module_count: 2
-    floor_cny: 749
+    floor_cny: 779
   - generation: DDR5
     capacity_gb: 32
     module_count: 2
-    floor_cny: 1936
+    floor_cny: 2199
   - generation: DDR5
     capacity_gb: 48
     module_count: 2
-    floor_cny: 3159
+    floor_cny: 3299
   - generation: DDR5
     capacity_gb: 64
     module_count: 2
-    floor_cny: 4109
+    floor_cny: 4385
   - generation: DDR5
     capacity_gb: 96
     module_count: 2
-    floor_cny: 7609
+    floor_cny: 7532
 storage:
   - pcie_generation: 3
     capacity_gb: 1000
-    floor_cny: 795
+    floor_cny: 825
   - pcie_generation: 3
     capacity_gb: 2000
-    floor_cny: 1493
+    floor_cny: 1479
   - pcie_generation: 4
     capacity_gb: 1000
-    floor_cny: 872
+    floor_cny: 875
   - pcie_generation: 4
     capacity_gb: 2000
-    floor_cny: 1489
+    floor_cny: 1500
