@@ -7,11 +7,18 @@
 
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
 
-from component_inference import enrich_item, infer_cooler_type, infer_gpu_vram
+from component_inference import (
+    enrich_item,
+    infer_cooler_type,
+    infer_gpu_vram,
+    infer_memory_capacity_gb,
+    infer_memory_module_count,
+)
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -51,6 +58,7 @@ NOTE_FIELDS = {
 }
 
 VALID_PRICE_STATUSES = {"scraped", "verified_manual", "channel_quote", "needs_market_quote"}
+SOURCE_BACKED_PRICE_STATUSES = {"scraped", "verified_manual", "channel_quote"}
 SOURCE_ID_PATTERN = re.compile(
     r"(^|-)mhc(-|$)|-(?:cpu|主板|显卡|内存|硬盘|电源|散热|机箱)-\d+-\d+-",
     re.IGNORECASE,
@@ -142,12 +150,57 @@ def _check_cpu_vendor_consistency(item):
     return None
 
 
+def _valid_iso_date(value):
+    if not isinstance(value, str) or not value:
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _validate_price(section, item, errors, warnings):
+    item_id = item.get("id", "<no-id>")
+    price_status = item.get("price_status", "")
+    price_cny = item.get("price_cny")
+    price_date = item.get("price_date")
+    if price_status and price_status not in VALID_PRICE_STATUSES:
+        errors.append(f"{section}.{item_id}: invalid price_status '{price_status}'")
+    if price_cny is not None and (
+        isinstance(price_cny, bool)
+        or not isinstance(price_cny, (int, float))
+        or price_cny <= 0
+    ):
+        errors.append(f"{section}.{item_id}: price_cny must be a positive number")
+    if price_status == "needs_market_quote" and price_cny is not None:
+        errors.append(f"{section}.{item_id}: needs_market_quote must not have price_cny")
+    if price_status in SOURCE_BACKED_PRICE_STATUSES and price_cny is None:
+        errors.append(f"{section}.{item_id}: source-backed price_status requires price_cny")
+    if price_cny is not None and not _valid_iso_date(price_date):
+        errors.append(f"{section}.{item_id}: invalid or missing price_date={price_date}")
+    elif price_date and not _valid_iso_date(price_date):
+        warnings.append(f"{section}.{item_id}: invalid price_date={price_date}")
+
+
+def _register_id(section, item_id, seen_ids, errors):
+    if not item_id or item_id == "<no-id>":
+        errors.append(f"{section}: missing id")
+        return
+    previous = seen_ids.get(item_id)
+    if previous:
+        errors.append(f"duplicate id {item_id}: {previous} and {section}")
+    else:
+        seen_ids[item_id] = section
+
+
 def main():
     errors = []
     warnings = []
     notes = []
     counts = {}
     coverage_rows = []
+    seen_ids = {}
 
     # Load components.yaml
     comp_path = DATA / "components.yaml"
@@ -158,28 +211,28 @@ def main():
     with comp_path.open("r", encoding="utf-8") as f:
         lib = yaml.safe_load(f) or {}
 
+    metadata_date = (lib.get("metadata") or {}).get("price_date")
+    if metadata_date and not _valid_iso_date(str(metadata_date)):
+        errors.append(f"components.metadata.price_date invalid: {metadata_date}")
+
     for section in REQUIRED_SECTIONS:
-        items = lib.get(section, [])
+        raw_items = lib.get(section)
+        if not isinstance(raw_items, list) or not raw_items:
+            errors.append(f"{section}: missing or empty section")
+        items = raw_items if isinstance(raw_items, list) else []
         counts[section] = len(items)
         required = REQUIRED_FIELDS.get(section, set())
 
         for item in items:
             item_id = item.get("id", "<no-id>")
+            _register_id(section, item_id, seen_ids, errors)
             if _id_not_normalized(item_id):
                 errors.append(f"{section}.{item_id}: imported id was not normalized")
             missing = required - set(item.keys())
             if missing:
                 errors.append(f"{section}.{item_id}: missing fields {missing}")
 
-            price_status = item.get("price_status", "")
-            if price_status and price_status not in VALID_PRICE_STATUSES:
-                errors.append(f"{section}.{item_id}: invalid price_status '{price_status}'")
-
-            price_cny = item.get("price_cny")
-            if price_status == "needs_market_quote" and price_cny is not None:
-                warnings.append(f"{section}.{item_id}: needs_market_quote but has price_cny={price_cny}")
-            if price_status != "needs_market_quote" and price_cny is None:
-                warnings.append(f"{section}.{item_id}: has price_status={price_status} but price_cny is None")
+            _validate_price(section, item, errors, warnings)
             if section == "cpus":
                 consistency_error = _check_cpu_vendor_consistency(item)
                 if consistency_error:
@@ -205,6 +258,24 @@ def main():
                             )
                     except (TypeError, ValueError):
                         errors.append(f"{section}.{item_id}: invalid vram_gb={current_vram}")
+                connectors = item.get("power_connectors") or []
+                if "16pin" in connectors and "6pin" in connectors:
+                    errors.append(
+                        f"{section}.{item_id}: impossible mixed 16pin and 6pin connector data"
+                    )
+            if section == "memory":
+                inferred_capacity = infer_memory_capacity_gb(item)
+                inferred_modules = infer_memory_module_count(item)
+                if inferred_capacity and item.get("capacity_gb") != inferred_capacity:
+                    errors.append(
+                        f"{section}.{item_id}: capacity_gb={item.get('capacity_gb')} "
+                        f"conflicts with model-inferred {inferred_capacity}GB"
+                    )
+                if inferred_modules and item.get("module_count") not in (None, inferred_modules):
+                    errors.append(
+                        f"{section}.{item_id}: module_count={item.get('module_count')} "
+                        f"conflicts with model-inferred {inferred_modules}"
+                    )
             if section == "coolers":
                 inferred_type = infer_cooler_type(item)
                 raw_type = str(item.get("type") or "").lower()
@@ -254,15 +325,21 @@ def main():
         cases = yaml.safe_load(f) or {}
 
     case_items = cases.get("cases", [])
+    if not isinstance(case_items, list) or not case_items:
+        errors.append("cases: missing or empty section")
+        case_items = []
     counts["cases"] = len(case_items)
+
+    case_metadata_date = (cases.get("metadata") or {}).get("cutoff_date")
+    if case_metadata_date and not _valid_iso_date(str(case_metadata_date)):
+        errors.append(f"cases.metadata.cutoff_date invalid: {case_metadata_date}")
 
     for case in case_items:
         case_id = case.get("id", "<no-id>")
+        _register_id("cases", case_id, seen_ids, errors)
         if _id_not_normalized(case_id):
             errors.append(f"cases.{case_id}: imported id was not normalized")
-        price_status = case.get("price_status", "")
-        if price_status and price_status not in VALID_PRICE_STATUSES:
-            errors.append(f"cases.{case_id}: invalid price_status '{price_status}'")
+        _validate_price("cases", case, errors, warnings)
         if not case.get("brand"):
             errors.append(f"cases.{case_id}: missing brand")
         if not case.get("motherboard_support"):
@@ -289,16 +366,19 @@ def main():
         missing_display_prices = []
         missing_display_refresh = []
         missing_display_brand = []
+        display_metadata_date = (displays.get("metadata") or {}).get("price_date")
+        if display_metadata_date and not _valid_iso_date(str(display_metadata_date)):
+            errors.append(f"displays.metadata.price_date invalid: {display_metadata_date}")
         for item in display_items:
             item_id = item.get("id", "<no-id>")
+            _register_id("displays", item_id, seen_ids, errors)
             missing = {"id", "model", "resolution"} - set(item.keys())
             if missing:
                 errors.append(f"displays.{item_id}: missing fields {missing}")
             if not item.get("brand"):
                 missing_display_brand.append(item_id)
+            _validate_price("displays", item, errors, warnings)
             price_status = item.get("price_status", "")
-            if price_status and price_status not in VALID_PRICE_STATUSES:
-                errors.append(f"displays.{item_id}: invalid price_status '{price_status}'")
             if price_status != "needs_market_quote" and item.get("price_cny") is None:
                 missing_display_prices.append(item_id)
             if not item.get("refresh_rate_hz"):

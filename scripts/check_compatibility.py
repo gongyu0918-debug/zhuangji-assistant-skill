@@ -148,10 +148,11 @@ class CompatibilityChecker:
             return {"type": "msg", "msg": f"缺少必要组件{('主板' if cpu else 'CPU')}"}
         cpu_sockets = self._normalize_socket_list(cpu.get("socket", ""))
         mb_sockets = self._normalize_socket_list(mb.get("socket", ""))
-        if cpu_sockets and mb_sockets:
-            if not set(cpu_sockets).intersection(mb_sockets):
-                return {"type": "error",
-                        "msg": f"接口不兼容，CPU【{cpu.get('socket')}】，主板【{mb.get('socket')}】"}
+        if not cpu_sockets or not mb_sockets:
+            return {"type": "msg", "msg": "CPU或主板缺少接口信息，需下单前复核"}
+        if not set(cpu_sockets).intersection(mb_sockets):
+            return {"type": "error",
+                    "msg": f"接口不兼容，CPU【{cpu.get('socket')}】，主板【{mb.get('socket')}】"}
         return {"type": "success", "msg": f"CPU和主板接口兼容【{mb.get('socket')}】"}
 
     def check_memory_motherboard(self, memory_list, mb):
@@ -243,6 +244,9 @@ class CompatibilityChecker:
             if "M.2" in str(s.get("form_factor", ""))
             and "SATA" in str(s.get("interface", "")).upper()
         )
+        if m2_count > 0 and m2_slots > 0 and m2_count > m2_slots:
+            return {"type": "error",
+                "msg": f"M.2硬盘数量【{m2_count}个】超过主板M.2接口数【{m2_slots}个】"}
         if m2_sata_count:
             support_value = (
                 mb.get("m2_sata_slots")
@@ -262,9 +266,6 @@ class CompatibilityChecker:
                     "msg": "M.2 SATA硬盘需复核主板M.2插槽是否支持SATA模式；多数新主板M.2仅支持PCIe/NVMe"}
         if m2_count > 0 and not m2_slots:
             return {"type": "msg", "msg": "主板缺少M.2接口数量信息，需下单前复核"}
-        if m2_count > 0 and m2_slots > 0 and m2_count > m2_slots:
-            return {"type": "error",
-                "msg": f"M.2硬盘数量【{m2_count}个】超过主板M.2接口数【{m2_slots}个】"}
         return {"type": "success", "msg": "硬盘接口兼容"}
 
     def check_sata_ports(self, storage_list, mb):
@@ -293,13 +294,15 @@ class CompatibilityChecker:
             return {"type": "msg", "msg": "缺少必要组件电源"}
         psu_w = self._parse_rated_wattage(psu)
         cpu_w = self._parse_num(cpu.get("power_w", 0)) if cpu else 0
-        gpu_w = sum(self._parse_num(g.get("power_w", 0)) for g in (gpu_list or []))
+        gpu_powers = [self._parse_num(g.get("power_w", 0)) for g in (gpu_list or [])]
+        gpu_w = sum(gpu_powers)
         if not psu_w:
             return {"type": "msg", "msg": "电源缺少功率信息"}
         if cpu and not cpu_w:
             return {"type": "msg", "msg": "CPU缺少功耗信息，电源功率需人工复核"}
-        if gpu_list and not gpu_w:
-            return {"type": "msg", "msg": "显卡缺少功耗信息，电源功率需人工复核"}
+        if gpu_list and any(not value for value in gpu_powers):
+            missing = [str(index + 1) for index, value in enumerate(gpu_powers) if not value]
+            return {"type": "msg", "msg": f"第{'、'.join(missing)}张显卡缺少功耗信息，电源功率需人工复核"}
         recommended = math.ceil((cpu_w + gpu_w + extra_w) * 1.35)
         if psu_w < recommended:
             return {"type": "error",

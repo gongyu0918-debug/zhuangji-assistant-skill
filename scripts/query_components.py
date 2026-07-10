@@ -66,7 +66,7 @@ DISPLAY_NAMES = {
 # Summary fields per category — minimal fields needed for first-pass narrowing.
 SUMMARY_BASE_FIELDS = ["id", "brand", "model", "price_cny", "price_status", "price_date"]
 SUMMARY_FIELDS_BY_CATEGORY = {
-    "cpu": SUMMARY_BASE_FIELDS + ["platform", "socket", "cores", "threads", "power_w"],
+    "cpu": SUMMARY_BASE_FIELDS + ["platform", "socket", "cores_threads", "cores", "threads", "power_w"],
     "mb": SUMMARY_BASE_FIELDS + [
         "platform", "socket", "chipset", "memory_generations", "memory_slots",
         "memory_freq_max", "m2_slots", "sata_ports", "form_factor", "color",
@@ -621,7 +621,7 @@ def in_current_scope(section, item, include_workstation_gpu=False):
 def _matches_socket(item, requested):
     item_socket = compact_text(item.get("socket"))
     wanted = compact_text(requested)
-    return not wanted or wanted in item_socket or item_socket in wanted
+    return not wanted or bool(item_socket and (wanted in item_socket or item_socket in wanted))
 
 
 def _matches_memory_gen(section, item, requested):
@@ -649,7 +649,13 @@ def _matches_form_factor(section, item, requested):
         return _normalize_form_factor(item.get("form_factor")) == wanted
     if section == "cases":
         supported = [_normalize_form_factor(v) for v in item.get("motherboard_support", [])]
-        return wanted in supported
+        compatible = {
+            "EATX": {"EATX", "ATX", "MATX", "ITX"},
+            "ATX": {"ATX", "MATX", "ITX"},
+            "MATX": {"MATX", "ITX"},
+            "ITX": {"ITX"},
+        }
+        return any(wanted in compatible.get(value, {value}) for value in supported)
     return True
 
 
@@ -1021,8 +1027,8 @@ def _cpu_tier(item):
             return score
 
     intel_scores = (
-        ("I914900", 900), ("I914700", 860), ("I714700", 820),
-        ("I714900", 820), ("I714700K", 835),
+        ("I914900", 900), ("I914700", 860), ("I714700K", 835),
+        ("I714700", 820), ("I714900", 820),
         ("I514600", 760), ("I512600K", 725), ("I512600", 710),
         ("I514490", 705), ("I514400", 690),
         ("I513490", 680), ("I513400", 670),
@@ -1401,7 +1407,7 @@ def main():
     parser.add_argument("--min-vram", type=int,
                         help="显卡最低显存容量 (GB)，例如明确要 RTX 5060 Ti 16GB 时用 --min-vram 16")
     parser.add_argument("--min-capacity", type=int,
-                        help="内存最低总容量 (GB)，例如本地 AI/剪辑 64GB 用 --min-capacity 64")
+                        help="内存最低总容量或 SSD 最低容量 (GB)；64GB 内存用 64，2TB SSD 用 2000")
     parser.add_argument("--color", help="颜色过滤 (black/white)")
     parser.add_argument("--rgb", choices=["yes", "no"], help="RGB 过滤")
     parser.add_argument("--showcase", action="store_true", help="只返回海景房机箱")
@@ -1419,7 +1425,7 @@ def main():
     parser.add_argument("--resolution", help="显示器分辨率过滤 (1080p/1K/1440p/2K/2160p/4K)")
     parser.add_argument("--min-refresh", type=int, help="显示器最低刷新率 (Hz)")
     parser.add_argument("--sort", choices=["asc", "desc", "tier"], default="asc",
-                        help="排序: asc=价格升序(默认), desc=价格降序, tier=显卡芯片/主板芯片组等级优先,同等级按价格升序")
+                        help="排序: asc=价格升序(默认), desc=价格降序, tier=按品类性能/采用率/规格完整度优先")
     parser.add_argument("--limit", type=int, default=20, help="最大返回数")
     parser.add_argument("--detail", action="store_true", help="返回完整属性 (默认只返回摘要)")
     parser.add_argument("--json", action="store_true", help="输出 JSON 格式")
