@@ -13,12 +13,13 @@ license: MIT
 
 ## 工作流
 
-1. 识别需求。先判断是整机推荐、旧机升级、配置补全、搭配检查、预算分配、硬件原理/选择问答，还是游戏帧率参考；再只读取相关 reference。预算段、用途识别、候选池和平台通用规则读 `references/routing.md`；3A/FPS、直播、本地 agent 硬件配置、ComfyUI、PS/剪辑/AE/Blender/UE/CAD、黑白海景房、无光、ITX、背插、水冷显卡、RTX PRO 等具体场景读 `references/scenarios.md`；升级/补全/检查流程读 `references/workflows.md`；硬件选择、性能释放和软硬件协同问答读 `references/hardware-faq.md`；帧率读 `references/game-performance.md`；价格和异常低价读 `references/pricing.md`；兼容字段读 `references/compatibility.md`；收录边界读 `references/hardware-scope.md`。
+1. 识别需求。先判断是整机推荐、旧机升级、配置补全、搭配检查、预算分配、硬件原理/选择问答，还是游戏帧率参考；再只读取相关 reference。意图、预算段和配平入口读 `references/routing.md`；确认要给具体型号、完整配置、升级、补全或搭配检查时再读 `references/selection-policy.md`；3A/FPS、直播、本地 agent 硬件配置、ComfyUI、PS/剪辑/AE/Blender/UE/CAD、黑白海景房、无光、ITX、背插、水冷显卡、RTX PRO 等具体场景读 `references/scenarios.md`；升级/补全/检查流程读 `references/workflows.md`；硬件选择、性能释放和软硬件协同问答读 `references/hardware-faq.md`；帧率读 `references/game-performance.md`；价格和异常低价读 `references/pricing.md`；兼容字段读 `references/compatibility.md`；收录边界读 `references/hardware-scope.md`。
 2. 查候选。运行 `scripts/query_components.py`，不要直接打开 `data/*.yaml`。完整配置至少分别查询 CPU、主板、内存、硬盘、显卡、散热、电源、机箱；中高端显卡、主板、SSD 和内存优先用 `--sort tier`；按 socket、DDR 代际、容量、显存、显卡长度、机箱尺寸、电源形态等依赖逐步收窄。显示器只在用户明确要求“带显示器/推荐显示器”时用 `--category display` 或 `--category monitor` 单独查询。风扇只在海景房补风扇、水冷夹汉堡、风道/无光风扇或用户明确要风扇时用 `--category fan` 单独查询，不进入 `all`。`--budget` 是单品价格上限，不是整机预算。
-3. 做兼容性。最终推荐必须运行 `scripts/check_compatibility.py --strict`，传入所有核心配件。兼容性以脚本结果为准；有缺字段、复核信息或警告时，不要写成完整通过，优先换字段完整的候选，确实无字段时单独列人工复核项。
+3. 做兼容性。最终推荐必须运行 `scripts/check_compatibility.py --strict --require-complete`，传入所有核心配件。退出码 `1` 表示存在硬不兼容，`2` 表示未发现硬不兼容但仍有待复核字段，只有退出码 `0` 才能写完整通过；优先换字段完整的候选，确实无字段时单独列人工复核项。
 4. 处理价格。离线库优先；离线库不足、价格日期超过 14 天或用户要求实时价格时，再搜索当前市场价。
    - 价格规则不清楚时读 `references/pricing.md`。
    - 机箱必须计入总价；海景房默认读取机箱 `fan_mounts` / `fan_slots_count`，再按水冷占用位预留风扇预算；风道机箱若已自带大风扇，不默认补满风扇位。
+   - 养宠/防毛查询可用 `--dust-filter yes` 找候选，但只有 `dust_filter_status=verified` 才能写成已确认防尘；`needs_verification` 必须提示核实滤网位置、覆盖范围和可拆洗方式。
 5. 输出配置。按用户语气决定详略；只回答方向或原理且未给具体采购型号时，不强制套整机报价表。只要给出具体采购型号或配置清单，就必须分行列出配件、参考单价、总价、预算差额、兼容性结论、取舍理由、下单前复核点、价格参考日期和“仅供参考，需复核实时价格/库存”的提醒。用户关心游戏帧率时只引用 `scripts/query_game_fps.py` 已收录样本，查不到就说未收录，不自行推算。
 
 ## 收录边界
@@ -34,12 +35,12 @@ license: MIT
 - 白色配置必须使用白色/白色系配件；黑色配置使用黑色或中性色；无光/纯性能需求不要为灯效和外观溢价牺牲核心性能。
 - 机箱必须计入总价；海景房/好看需求必须考虑风扇预算，风扇位缺字段时只提示自行核实，不编具体数量；风道机箱缺风扇位字段时不硬推具体加装风扇。
 - 显示器默认不计入整机配置和总价；用户明确要求时才单列显示器候选、参考价和“仅供参考，需按观感/接口/售后复核”的提醒。
-- 面向用户不要写脚本命令、内部价格状态或脚本状态词；用自然语言说明“兼容性检查完成，未发现硬不兼容”或“仍需复核显卡限长/线材/风扇位”等具体事项。
+- 面向用户不要写脚本命令、退出码、完整度门禁、内部价格状态或脚本状态词；用自然语言说明“兼容性检查完成，未发现硬不兼容”或“现有型号信息不足，仍需复核显卡限长/线材/风扇位”等具体事项。
 - 配置报告中 CPU、主板、内存、硬盘、显卡、散热、电源、机箱分别成行；内存写清容量/频率/时序，硬盘写清容量/接口/颗粒或定位，显卡写清芯片和显存容量。
 
 ## 脚本
 
 - `scripts/query_components.py`: 查询候选，默认摘要输出，`--detail` 才展开更多字段。
-- `scripts/check_compatibility.py`: 11 项兼容性检查，最终配置用 `--strict`。
+- `scripts/check_compatibility.py`: 11 项兼容性检查，最终配置用 `--strict --require-complete` 区分硬兼容和字段完整度。
 - `scripts/query_game_fps.py`: 查询已收录游戏帧率参考样本；不做硬件倍率推算。
 - `scripts/validate_library.py`: 发布前/维护时校验库结构和关键字段完整度。

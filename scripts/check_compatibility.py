@@ -177,7 +177,8 @@ class CompatibilityChecker:
             mb_freq = self._parse_num(mb.get("memory_freq_max", 0))
             if mem_freq and not mb_freq:
                 results.append({"type": "skipped",
-                    "msg": f"主板缺少内存最高频率字段，未检查内存{label}频率【{mem_freq}MHz】是否在主板支持范围内"})
+                    "msg": f"主板缺少内存最高频率字段，未检查内存{label}频率【{mem_freq}MHz】的XMP/EXPO/QVL条件",
+                    "review_required": False})
             elif mem_freq and mb_freq and mem_freq > mb_freq:
                 results.append({"type": "warn",
                     "msg": f"内存{label}频率【{mem_freq}MHz】超过主板支持【{mb_freq}MHz】，可能不稳定"})
@@ -247,6 +248,16 @@ class CompatibilityChecker:
         if m2_count > 0 and m2_slots > 0 and m2_count > m2_slots:
             return {"type": "error",
                 "msg": f"M.2硬盘数量【{m2_count}个】超过主板M.2接口数【{m2_slots}个】"}
+        missing_interfaces = [
+            str(index + 1)
+            for index, storage in enumerate(storage_list)
+            if not str(storage.get("interface") or "").strip()
+        ]
+        if missing_interfaces:
+            return {
+                "type": "msg",
+                "msg": f"第{'、'.join(missing_interfaces)}块硬盘缺少接口信息，需复核M.2/NVMe/SATA类型",
+            }
         if m2_sata_count:
             support_value = (
                 mb.get("m2_sata_slots")
@@ -271,14 +282,22 @@ class CompatibilityChecker:
     def check_sata_ports(self, storage_list, mb):
         """检查 SATA 设备数 vs 主板 SATA 口数。"""
         if not storage_list:
-            return {}
+            return {"type": "skipped", "msg": "未选择硬盘，跳过SATA接口检查", "review_required": False}
         if not mb:
             return {"type": "msg", "msg": "缺少必要组件主板"}
+        if any(not str(storage.get("interface") or "").strip() for storage in storage_list):
+            return {
+                "type": "skipped",
+                "msg": "硬盘接口信息不足，SATA数量由硬盘接口复核项覆盖",
+                "review_required": False,
+            }
         sata_count = sum(1 for s in storage_list
                          if "SATA" in s.get("interface", "") and "M.2" not in s.get("form_factor", ""))
         sata_ports = self._parse_num(mb.get("sata_ports", 0))
-        if not sata_count or not sata_ports:
-            return {}
+        if not sata_count:
+            return {"type": "success", "msg": "未使用SATA设备，无需占用主板SATA接口"}
+        if not sata_ports:
+            return {"type": "msg", "msg": "主板缺少SATA接口数量信息，需下单前复核"}
         if sata_count > sata_ports:
             return {"type": "error",
                 "msg": f"SATA设备【{sata_count}个】超过主板SATA口【{sata_ports}个】"}
@@ -318,6 +337,9 @@ class CompatibilityChecker:
         """检查显卡供电接口兼容性。"""
         if not gpu or not psu:
             return {}
+        connector_value = gpu.get("power_connectors")
+        if connector_value in (None, "", []) and gpu.get("requires_16pin_psu") is None:
+            return {"type": "msg", "msg": "显卡缺少供电接口信息，需下单前复核线材"}
         requires_16pin = infer_requires_16pin_gpu(gpu)
         native_16pin = infer_native_16pin_psu(psu)
         if requires_16pin and native_16pin is True:
@@ -328,7 +350,7 @@ class CompatibilityChecker:
         if requires_16pin:
             return {"type": "msg",
                 "msg": "显卡需要16pin供电，电源缺少原生接口字段，需下单前复核线材；无原生线材时可使用转接线"}
-        return {}
+        return {"type": "success", "msg": "显卡未声明16pin供电需求"}
 
     def check_cooler_case(self, cooler, case):
         """检查散热器与机箱兼容性: 风冷高度/水冷冷排 vs 机箱限制。"""
@@ -435,11 +457,11 @@ class CompatibilityChecker:
 
     # --- 主入口 ---
 
-    def _skipped(self, msg):
-        return {"type": "skipped", "msg": msg}
+    def _skipped(self, msg, review_required=True):
+        return {"type": "skipped", "msg": msg, "review_required": review_required}
 
-    def _add_check(self, checks, name, result, skipped_msg="无可检查项"):
-        checks.append((name, result or self._skipped(skipped_msg)))
+    def _add_check(self, checks, name, result, skipped_msg="无可检查项", skipped_review_required=True):
+        checks.append((name, result or self._skipped(skipped_msg, skipped_review_required)))
 
     def check_all(self, build, strict=False, missing_ids=None):
         """检查完整配置的兼容性。
@@ -450,7 +472,8 @@ class CompatibilityChecker:
             strict: final-build mode. Missing core parts become errors.
             missing_ids: IDs passed by the caller but not found in the library.
         Returns:
-            {"overall": "pass"|"warn"|"fail", "checks": [...], "severity": {...}}
+            Compatibility and evidence completeness are reported separately.
+            ``overall`` keeps the legacy pass/warn/fail contract.
         """
         cpu = build.get("cpu")
         mb = build.get("motherboard")
@@ -489,7 +512,13 @@ class CompatibilityChecker:
         for i, gpu in enumerate(gpus):
             self._add_check(checks, "显卡↔机箱", self.check_gpu_case(gpu, case, str(i+1) if len(gpus)>1 else ""))
         if not gpus:
-            self._add_check(checks, "显卡↔机箱", {}, "未选择显卡，跳过显卡机箱限长检查")
+            self._add_check(
+                checks,
+                "显卡↔机箱",
+                {},
+                "未选择显卡，跳过显卡机箱限长检查",
+                skipped_review_required=False,
+            )
         self._add_check(checks, "硬盘↔主板", self.check_storage_motherboard(storage, mb))
         self._add_check(checks, "SATA接口", self.check_sata_ports(storage, mb), "没有SATA设备或缺少SATA信息")
         self._add_check(checks, "电源功率", self.check_psu_power(psu, cpu, gpus))
@@ -497,7 +526,13 @@ class CompatibilityChecker:
             label = f"显卡{i+1}供电" if len(gpus) > 1 else "显卡供电"
             self._add_check(checks, label, self.check_gpu_power_connector(gpu, psu), "显卡未声明特殊供电需求")
         if not gpus:
-            self._add_check(checks, "显卡供电", {}, "未选择显卡，跳过显卡供电检查")
+            self._add_check(
+                checks,
+                "显卡供电",
+                {},
+                "未选择显卡，跳过显卡供电检查",
+                skipped_review_required=False,
+            )
         self._add_check(checks, "散热↔机箱", self.check_cooler_case(cooler, case))
         self._add_check(checks, "机箱↔主板", self.check_case_motherboard(case, mb))
         self._add_check(checks, "机箱↔电源", self.check_case_psu(case, psu), "未检查机箱电源尺寸")
@@ -511,7 +546,26 @@ class CompatibilityChecker:
             overall = "warn"
         else:
             overall = "pass"
-        return {"overall": overall, "checks": checks, "severity": severity}
+        review_count = sum(
+            1
+            for _, check in checks
+            if check.get("type") in ("warn", "msg")
+            or (check.get("type") == "skipped" and check.get("review_required", True))
+        )
+        compatible = severity["error"] == 0
+        review_required = review_count > 0
+        complete = compatible and not review_required
+        status = "incompatible" if not compatible else ("needs_review" if review_required else "complete")
+        return {
+            "overall": overall,
+            "status": status,
+            "compatible": compatible,
+            "complete": complete,
+            "review_required": review_required,
+            "review_count": review_count,
+            "checks": checks,
+            "severity": severity,
+        }
 
 
 def load_components():
@@ -545,6 +599,11 @@ def main():
     parser.add_argument("--cooler", help="散热 ID")
     parser.add_argument("--case", help="机箱 ID")
     parser.add_argument("--strict", action="store_true", help="严格模式: 最终整机必须包含核心配件")
+    parser.add_argument(
+        "--require-complete",
+        action="store_true",
+        help="完整度门禁: 有警告、待复核信息或需复核的跳过项时返回退出码2",
+    )
     parser.add_argument("--json", action="store_true", help="输出 JSON 格式")
     args = parser.parse_args()
 
@@ -585,6 +644,7 @@ def main():
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         print(f"兼容性检查结果: {result['overall'].upper()}")
+        print(f"检查完整度: {result['status'].upper()}")
         print(f"  错误: {result['severity']['error']}, "
               f"警告: {result['severity']['warn']}, "
               f"通过: {result['severity']['success']}, "
@@ -594,7 +654,11 @@ def main():
             if check.get("type"):
                 icon = {"error": "❌", "warn": "⚠️", "success": "✅", "msg": "ℹ️", "skipped": "↷"}.get(check["type"], "  ")
                 print(f"  {icon} {name}: {check['msg']}")
-    return 1 if result["overall"] == "fail" else 0
+    if result["overall"] == "fail":
+        return 1
+    if args.require_complete and not result["complete"]:
+        return 2
+    return 0
 
 
 if __name__ == "__main__":

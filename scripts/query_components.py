@@ -690,14 +690,42 @@ def _matches_air_flow(item, requested):
     wanted = compact_text(requested)
     if not wanted or wanted == "ANY":
         return True
+    if wanted == "SHOWCASE":
+        return _effective_showcase(item)
     item_type = compact_text(item.get("air_flow_type"))
     return wanted == item_type
+
+
+def _effective_showcase(item):
+    """Unify legacy is_showcase and the newer air_flow_type classification."""
+    explicit = item.get("is_showcase")
+    explicit_true = explicit is True or str(explicit).strip().lower() in ("true", "yes", "1")
+    return explicit_true or compact_text(item.get("air_flow_type")) == "SHOWCASE"
+
+
+def _dust_filter_status(item):
+    """Distinguish a searchable hint from a maintainer-verified dust-filter spec."""
+    has_filter = item.get("has_dust_filter")
+    verified = item.get("dust_filter_verified")
+    if has_filter is True:
+        return "verified" if verified is True else "needs_verification"
+    if has_filter is False:
+        return "not_listed"
+    return "unknown"
 
 
 def _matches_optional_bool(item, field, requested):
     if requested is None:
         return True
-    return bool(item.get(field)) == bool(requested)
+    value = item.get(field)
+    if isinstance(value, bool):
+        return value == bool(requested)
+    normalized = str(value or "").strip().lower()
+    if normalized in ("true", "yes", "1"):
+        return bool(requested) is True
+    if normalized in ("false", "no", "0"):
+        return bool(requested) is False
+    return False
 
 
 def _matches_fan_size(item, fan_size):
@@ -873,13 +901,11 @@ def query(category=None, budget=None, platform=None, color=None,
                 continue
             if color and not color_matches(item, color):
                 continue
-            if showcase is True:
-                case_type = str(item.get("is_showcase", False))
-                if case_type != "True" and not item.get("is_showcase"):
-                    continue
+            if showcase is True and not _effective_showcase(item):
+                continue
             if air_flow and not _matches_air_flow(item, air_flow):
                 continue
-            if dust_filter is not None and bool(item.get("has_dust_filter")) != bool(dust_filter):
+            if not _matches_optional_bool(item, "has_dust_filter", dust_filter):
                 continue
             results.append(_summarize_case(item))
         _sort_results(results, sort, "case")
@@ -1294,7 +1320,8 @@ def _summarize_case(case):
         "psu_length_mm": case.get("psu_length_mm", 0),
         "air_flow_type": case.get("air_flow_type", ""),
         "has_dust_filter": case.get("has_dust_filter"),
-        "is_showcase": case.get("is_showcase", False),
+        "dust_filter_status": _dust_filter_status(case),
+        "is_showcase": _effective_showcase(case),
     }
 
 
@@ -1354,8 +1381,13 @@ def display_extra(category, item):
             parts.append(f"PSU≤{item.get('psu_length_mm')}mm")
         if item.get("air_flow_type"):
             parts.append(f"airflow={item.get('air_flow_type')}")
-        if item.get("has_dust_filter") is not None:
-            parts.append("dust_filter=" + ("yes" if item.get("has_dust_filter") else "no"))
+        dust_status = item.get("dust_filter_status") or _dust_filter_status(item)
+        if dust_status == "verified":
+            parts.append("dust_filter=verified")
+        elif dust_status == "needs_verification":
+            parts.append("dust_filter=verify")
+        elif dust_status == "not_listed":
+            parts.append("dust_filter=not-listed")
         return " ".join(parts)
     if category == "fan":
         parts = []
@@ -1413,7 +1445,11 @@ def main():
     parser.add_argument("--showcase", action="store_true", help="只返回海景房机箱")
     parser.add_argument("--air-flow", choices=["airflow", "mesh", "showcase", "standard", "any"],
                         help="机箱风道类型过滤；养宠/风道优先可用 airflow 或 mesh")
-    parser.add_argument("--dust-filter", choices=["yes", "no"], help="机箱防尘/防毛过滤")
+    parser.add_argument(
+        "--dust-filter",
+        choices=["yes", "no"],
+        help="机箱防尘/防毛候选过滤；yes 仍需按 dust_filter_status 复核具体滤网规格",
+    )
     parser.add_argument("--fan-size", type=int, help="风扇尺寸过滤 (120/140 等 mm)")
     parser.add_argument("--blade-direction", choices=["normal", "reverse", "any"],
                         help="风扇正反页过滤: normal=正页/正叶, reverse=反页/反叶")
