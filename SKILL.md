@@ -13,8 +13,12 @@ license: MIT
 
 ## 工作流
 
-1. 识别需求。先判断是整机推荐、旧机升级、配置补全、搭配检查、预算分配、硬件原理/选择问答，还是游戏帧率参考；再只读取相关 reference。意图、预算段和配平入口读 `references/routing.md`；确认要给具体型号、完整配置、升级、补全或搭配检查时再读 `references/selection-policy.md`；3A/FPS、直播、本地 agent 硬件配置、ComfyUI、PS/剪辑/AE/Blender/UE/CAD、黑白海景房、无光、ITX、背插、水冷显卡、RTX PRO 等具体场景读 `references/scenarios.md`；升级/补全/检查流程读 `references/workflows.md`；硬件选择、性能释放和软硬件协同问答读 `references/hardware-faq.md`；帧率读 `references/game-performance.md`；价格和异常低价读 `references/pricing.md`；兼容字段读 `references/compatibility.md`；收录边界读 `references/hardware-scope.md`。
-2. 查候选。运行 `scripts/query_components.py`，不要直接打开 `data/*.yaml`。完整配置至少分别查询 CPU、主板、内存、硬盘、显卡、散热、电源、机箱；中高端显卡、主板、SSD 和内存优先用 `--sort tier`；按 socket、DDR 代际、容量、显存、显卡长度、机箱尺寸、电源形态等依赖逐步收窄。显示器只在用户明确要求“带显示器/推荐显示器”时用 `--category display` 或 `--category monitor` 单独查询。风扇只在海景房补风扇、水冷夹汉堡、风道/无光风扇或用户明确要风扇时用 `--category fan` 单独查询，不进入 `all`。`--budget` 是单品价格上限，不是整机预算。
+1. 识别需求并按分支只读必要 reference。
+   - 所有需求先读 `references/routing.md`；只有要给具体型号、完整配置、升级、补全或搭配检查时，再读 `references/selection-policy.md`。
+   - 命中 3A/FPS、直播、本地 agent 硬件配置、ComfyUI、PS/剪辑/AE/Blender/UE/CAD、黑白海景房、无光、ITX、背插、水冷显卡或 RTX PRO 时，再读 `references/scenarios.md`。
+   - 升级、补全或检查读 `references/workflows.md`；硬件选择和软硬件协同问答读 `references/hardware-faq.md`；游戏帧率读 `references/game-performance.md`。
+   - 仅在对应口径不清楚时读取 `references/pricing.md`、`references/compatibility.md` 或 `references/hardware-scope.md`。
+2. 查候选。运行 `scripts/query_components.py`，不要直接打开 `data/*.yaml`。完整配置至少分别查询 CPU、主板、内存、硬盘、显卡、散热、电源、机箱；中高端显卡、主板、SSD 和内存优先用 `--sort tier`；用户给出现有型号时用 `--model` 定位，已知库内 ID 时用 `--id` 精确定位，定位结果若缺价只用于兼容检查，不参与总价；明确 1TB/2TB 等容量时同时设置 `--min-capacity` 和 `--max-capacity`，避免更大容量挤占首屏。显示器只在用户明确要求“带显示器/推荐显示器”时用 `--category display` 或 `--category monitor` 单独查询。风扇只在海景房补风扇、水冷夹汉堡、风道/无光风扇或用户明确要风扇时用 `--category fan` 单独查询，不进入 `all`。`--budget` 是单品价格上限，不是整机预算。
 3. 做兼容性。最终推荐必须运行 `scripts/check_compatibility.py --strict --require-complete`，传入所有核心配件。退出码 `1` 表示存在硬不兼容，`2` 表示未发现硬不兼容但仍有待复核字段，只有退出码 `0` 才能写完整通过；优先换字段完整的候选，确实无字段时单独列人工复核项。
 4. 处理价格。离线库优先；离线库不足、价格日期超过 14 天或用户要求实时价格时，再搜索当前市场价。
    - 价格规则不清楚时读 `references/pricing.md`。

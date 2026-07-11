@@ -15,6 +15,7 @@ import yaml
 from component_inference import (
     enrich_item,
     infer_cooler_type,
+    infer_capacity_gb,
     infer_gpu_vram,
     infer_memory_capacity_gb,
     infer_memory_module_count,
@@ -63,6 +64,10 @@ SOURCE_ID_PATTERN = re.compile(
     r"(^|-)mhc(-|$)|-(?:cpu|主板|显卡|内存|硬盘|电源|散热|机箱)-\d+-\d+-",
     re.IGNORECASE,
 )
+VALID_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9\u4e00-\u9fff]+)+$")
+FAN_ACCESSORY_RE = re.compile(r"(?:控制器|集线器|遥控器|HUB)\s*$", re.IGNORECASE)
+BLACK_VARIANT_RE = re.compile(r"黑(?:色|款|版|\s|$)", re.IGNORECASE)
+WHITE_VARIANT_RE = re.compile(r"白(?:色|款|版|\s|$)", re.IGNORECASE)
 
 COVERAGE_FIELDS = {
     "gpus": ["length_mm", "requires_16pin_psu"],
@@ -83,7 +88,7 @@ CPU_AIR_COOLER_RE = re.compile(
     r"(热管|单塔|双塔|下压|CPU\s*散热|CPU风冷|内存散热器|阿萨辛|大霜塔|冰立方|玄冰)",
     re.IGNORECASE,
 )
-VALID_FAN_TYPES = {"case_fan", "radiator_fan_pack", "aio_frame"}
+VALID_FAN_TYPES = {"case_fan", "radiator_fan_pack", "aio_frame", "accessory"}
 VALID_BLADE_DIRECTIONS = {"normal", "reverse"}
 VALID_GPU_MEMORY_TYPES = {
     "GDDR5", "GDDR5X", "GDDR6", "GDDR6X", "GDDR7", "GDDR7 ECC",
@@ -105,6 +110,18 @@ def _parse_int(value, default=0):
         except ValueError:
             return default
     return default
+
+
+def _explicit_display_size_inch(item):
+    """Read an explicit Chinese inch token without guessing from model codes."""
+    match = re.search(r"(?<!\d)(\d{2}(?:\.\d+)?)\s*(?:英寸|寸)", str(item.get("model", "")))
+    return float(match.group(1)) if match else None
+
+
+def _explicit_display_refresh_hz(item):
+    """Read an explicit refresh-rate token from a display model."""
+    match = re.search(r"(?<!\d)(\d{2,4})\s*HZ", str(item.get("model", "")), re.IGNORECASE)
+    return int(match.group(1)) if match else None
 
 
 def _valid_fan_mounts(value):
@@ -187,6 +204,8 @@ def _register_id(section, item_id, seen_ids, errors):
     if not item_id or item_id == "<no-id>":
         errors.append(f"{section}: missing id")
         return
+    if not VALID_ID_PATTERN.fullmatch(str(item_id)):
+        errors.append(f"{section}.{item_id}: invalid id shape; use a stable category-model id")
     previous = seen_ids.get(item_id)
     if previous:
         errors.append(f"duplicate id {item_id}: {previous} and {section}")
@@ -276,6 +295,21 @@ def main():
                         f"{section}.{item_id}: module_count={item.get('module_count')} "
                         f"conflicts with model-inferred {inferred_modules}"
                     )
+            if section == "storage":
+                inferred_capacity = infer_capacity_gb(item)
+                raw_capacity_tb = item.get("capacity_tb")
+                if inferred_capacity and raw_capacity_tb:
+                    try:
+                        raw_capacity_gb = float(raw_capacity_tb) * 1024
+                    except (TypeError, ValueError):
+                        errors.append(f"{section}.{item_id}: invalid capacity_tb={raw_capacity_tb}")
+                        raw_capacity_gb = float(inferred_capacity)
+                    tolerance_gb = max(32.0, float(inferred_capacity) * 0.10)
+                    if abs(raw_capacity_gb - float(inferred_capacity)) > tolerance_gb:
+                        errors.append(
+                            f"{section}.{item_id}: capacity_tb={raw_capacity_tb} "
+                            f"conflicts with model-inferred {inferred_capacity}GB"
+                        )
             if section == "coolers":
                 inferred_type = infer_cooler_type(item)
                 raw_type = str(item.get("type") or "").lower()
@@ -292,6 +326,22 @@ def main():
                     errors.append(f"{section}.{item_id}: screen fan must be rgb=true")
                 if item.get("fan_type") == "aio_frame" and item.get("default_recommend") is not False:
                     errors.append(f"{section}.{item_id}: aio_frame must not be default_recommend")
+                accessory = bool(FAN_ACCESSORY_RE.search(str(item.get("model", "")).strip()))
+                if accessory and item.get("fan_type") != "accessory":
+                    errors.append(f"{section}.{item_id}: accessory-only variant classified as fan")
+                if item.get("fan_type") == "accessory" and item.get("default_recommend") is not False:
+                    errors.append(f"{section}.{item_id}: accessory must not be default_recommend")
+                model = str(item.get("model", ""))
+                explicit_black = bool(BLACK_VARIANT_RE.search(model))
+                explicit_white = bool(WHITE_VARIANT_RE.search(model))
+                mixed_color_label = "黑白" in model or "白黑" in model
+                if not mixed_color_label and explicit_black != explicit_white:
+                    expected_color = "black" if explicit_black else "white"
+                    if str(item.get("color") or "").lower() != expected_color:
+                        errors.append(
+                            f"{section}.{item_id}: color={item.get('color')} "
+                            f"conflicts with explicit {expected_color} model token"
+                        )
                 if item.get("size_mm"):
                     size_mm = _parse_int(item.get("size_mm"))
                     if size_mm < 80 or size_mm > 220:
@@ -383,6 +433,22 @@ def main():
                 missing_display_prices.append(item_id)
             if not item.get("refresh_rate_hz"):
                 missing_display_refresh.append(item_id)
+            refresh_hz = _parse_int(item.get("refresh_rate_hz"))
+            if refresh_hz and (refresh_hz < 30 or refresh_hz > 1000):
+                errors.append(f"displays.{item_id}: implausible refresh_rate_hz={refresh_hz}")
+            explicit_refresh = _explicit_display_refresh_hz(item)
+            if explicit_refresh and refresh_hz and explicit_refresh != refresh_hz:
+                errors.append(
+                    f"displays.{item_id}: refresh_rate_hz={refresh_hz} "
+                    f"conflicts with explicit model token {explicit_refresh}"
+                )
+            explicit_size = _explicit_display_size_inch(item)
+            if explicit_size and item.get("size_inch"):
+                if abs(float(item.get("size_inch")) - explicit_size) > 0.6:
+                    errors.append(
+                        f"displays.{item_id}: size_inch={item.get('size_inch')} "
+                        f"conflicts with explicit model token {explicit_size}"
+                    )
         if missing_display_prices:
             sample = ", ".join(missing_display_prices[:5])
             warnings.append(

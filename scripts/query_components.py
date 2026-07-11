@@ -49,6 +49,25 @@ CORE_CATEGORIES = ("cpu", "mb", "memory", "storage", "gpu", "cooler", "psu", "ca
 DISPLAY_CATEGORIES = {"display", "monitor"}
 FAN_CATEGORIES = {"fan"}
 
+DEDUPE_SPEC_FIELDS = {
+    "cpu": ("socket", "power_w"),
+    "mb": ("socket", "memory_generations", "form_factor", "memory_slots", "m2_slots", "sata_ports"),
+    "memory": ("generation", "capacity_gb", "module_count", "frequency_mt", "timing", "color", "rgb"),
+    "storage": ("capacity_gb", "capacity_tb", "interface", "pcie_generation", "form_factor"),
+    "gpu": (
+        "chip", "vram_gb", "memory_type", "gpu_cooling", "color",
+        "length_mm", "power_w", "power_connectors", "requires_16pin_psu",
+    ),
+    "cooler": ("type", "radiator_mm", "height_mm", "color"),
+    "psu": ("wattage_w", "form_factor", "length_mm", "native_16pin_gpu_power", "color"),
+    "case": (
+        "colors", "motherboard_support", "gpu_length_mm", "cpu_cooler_height_mm",
+        "psu_support", "psu_length_mm",
+    ),
+    "display": ("resolution", "size_inch", "refresh_rate_hz"),
+    "fan": ("size_mm", "pack_count", "blade_direction", "color", "fan_type"),
+}
+
 DISPLAY_NAMES = {
     "cpu": "CPU",
     "mb": "主板",
@@ -107,6 +126,7 @@ COLOR_ALIASES = {
 
 RGB_TERMS = ("ARGB", "RGB", "幻彩", "炫彩", "彩色", "彩光", "灯效", "灯光", "发光")
 NO_RGB_TERMS = ("无光", "不发光")
+FAN_ACCESSORY_RE = re.compile(r"(?:控制器|集线器|遥控器|HUB)\s*$", re.IGNORECASE)
 
 # 以下排序只按芯片/芯片组定位辅助筛选，不包含品牌优劣判断。
 # 若后续加入品牌/系列候选池权重，应仅基于公开电商销量、装机采用率、
@@ -260,6 +280,51 @@ def compact_text(value):
     return "".join(ch for ch in str(value or "").upper() if ch.isalnum())
 
 
+def is_fan_accessory(item):
+    """Identify accessory-only variants that must not enter fan recommendations."""
+    return bool(FAN_ACCESSORY_RE.search(str(item.get("model") or "").strip()))
+
+
+def _dedupe_key(category, item):
+    """Build a display-level key for duplicate channel quotes of one SKU."""
+    model = compact_text(item.get("model"))
+    if not model:
+        return (category, compact_text(item.get("id")))
+    brand = compact_text(item.get("brand"))
+    if brand and model.startswith(brand):
+        model = model[len(brand):]
+    specs = tuple(
+        compact_text(item.get(field))
+        for field in DEDUPE_SPEC_FIELDS.get(category, ())
+    )
+    return (category, brand, model, specs)
+
+
+def dedupe_results(category, results):
+    """Keep the first sorted quote for each indistinguishable displayed SKU."""
+    seen = set()
+    unique = []
+    for item in results:
+        key = _dedupe_key(category, item)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+    return unique
+
+
+def _matches_identity(item, model=None, item_id=None):
+    """Match a user-supplied model token or an exact library ID."""
+    if item_id and str(item.get("id", "")) != str(item_id):
+        return False
+    if model:
+        wanted = compact_text(model)
+        haystack = compact_text(" ".join(str(item.get(k, "")) for k in ("brand", "model", "id")))
+        if wanted not in haystack:
+            return False
+    return True
+
+
 def _parse_num(value, default=0):
     """Parse imported numeric fields that may carry units or noisy text."""
     if isinstance(value, bool):
@@ -279,6 +344,14 @@ def _parse_num(value, default=0):
 
 def _parse_int(value, default=0):
     return int(_parse_num(value, default) or default)
+
+
+def _capacity_upper_bound(section, value):
+    """Map common marketed SSD capacities to their binary GB representation."""
+    parsed = _parse_int(value)
+    if section == "storage":
+        return {500: 512, 1000: 1024, 2000: 2048, 4000: 4096, 8000: 8192}.get(parsed, parsed)
+    return parsed
 
 
 def item_text(item):
@@ -516,6 +589,21 @@ def filter_low_price_outliers(category, results):
         if key in floors and price and price < floors[key]:
             continue
         kept.append(item)
+    return kept
+
+
+def keep_identity_matches_without_untrusted_prices(category, results):
+    """Keep lookup-only rows while preventing rejected prices from entering totals."""
+    trusted_ids = {item.get("id") for item in filter_low_price_outliers(category, results)}
+    kept = []
+    for item in results:
+        if item.get("id") in trusted_ids:
+            kept.append(item)
+            continue
+        lookup_item = dict(item)
+        lookup_item["price_cny"] = None
+        lookup_item["price_status"] = "needs_market_quote"
+        kept.append(lookup_item)
     return kept
 
 
@@ -879,7 +967,8 @@ def query(category=None, budget=None, platform=None, color=None,
           gpu_chip=None, min_vram=None, min_capacity=None, include_workstation_gpu=False,
           resolution=None, min_refresh=None, air_flow=None, dust_filter=None,
           fan_size=None, blade_direction=None, linkable=None, screen=None,
-          radiator_bundle=None, fan_type=None):
+          radiator_bundle=None, fan_type=None, model=None, item_id=None,
+          max_capacity=None):
     """查询配件。返回匹配的配件列表。"""
     if gpu_cooling == "any":
         gpu_cooling = None
@@ -889,9 +978,11 @@ def query(category=None, budget=None, platform=None, color=None,
         # Query cases.yaml
         cases_data = load_cases()
         for item in cases_data.get("cases", []):
-            if has_price_only and item.get("price_status") == "needs_market_quote":
+            if not _matches_identity(item, model=model, item_id=item_id):
                 continue
-            if not include_legacy and not item.get("motherboard_support"):
+            if has_price_only and item.get("price_status") == "needs_market_quote" and not (model or item_id):
+                continue
+            if not include_legacy and not item.get("motherboard_support") and not (model or item_id):
                 continue
             if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
                 continue
@@ -909,12 +1000,14 @@ def query(category=None, budget=None, platform=None, color=None,
                 continue
             results.append(_summarize_case(item))
         _sort_results(results, sort, "case")
-        return results[:limit]
+        return dedupe_results("case", results)[:limit]
 
     if category in DISPLAY_CATEGORIES:
         displays_data = load_displays()
         for item in displays_data.get("displays", []):
-            if has_price_only and item.get("price_status") == "needs_market_quote":
+            if not _matches_identity(item, model=model, item_id=item_id):
+                continue
+            if has_price_only and item.get("price_status") == "needs_market_quote" and not (model or item_id):
                 continue
             if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
                 continue
@@ -929,14 +1022,18 @@ def query(category=None, budget=None, platform=None, color=None,
                 result["brand"] = infer_display_brand(result)
             results.append(result)
         _sort_results(results, sort, "display")
-        return results[:limit]
+        return dedupe_results("display", results)[:limit]
 
     if category in FAN_CATEGORIES:
         lib = load_components()
         for item in lib.get("fans", []):
-            if has_price_only and item.get("price_status") == "needs_market_quote":
+            if not _matches_identity(item, model=model, item_id=item_id):
                 continue
-            if not include_legacy and item.get("default_recommend") is False:
+            if is_fan_accessory(item) and fan_type != "accessory":
+                continue
+            if has_price_only and item.get("price_status") == "needs_market_quote" and not (model or item_id):
+                continue
+            if not include_legacy and item.get("default_recommend") is False and not (model or item_id):
                 continue
             if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
                 continue
@@ -958,7 +1055,7 @@ def query(category=None, budget=None, platform=None, color=None,
                 continue
             results.append(item)
         _sort_results(results, sort, "fan")
-        return results[:limit]
+        return dedupe_results("fan", results)[:limit]
 
     # Query components.yaml
     lib = load_components()
@@ -967,9 +1064,11 @@ def query(category=None, budget=None, platform=None, color=None,
 
     for sec in categories_to_search:
         for item in lib.get(sec, []):
-            if has_price_only and item.get("price_status") == "needs_market_quote":
+            if not _matches_identity(item, model=model, item_id=item_id):
                 continue
-            if not include_legacy and not in_current_scope(
+            if has_price_only and item.get("price_status") == "needs_market_quote" and not (model or item_id):
+                continue
+            if not include_legacy and not (model or item_id) and not in_current_scope(
                 sec, item, include_workstation_gpu=include_workstation_gpu
             ):
                 continue
@@ -994,11 +1093,14 @@ def query(category=None, budget=None, platform=None, color=None,
                     continue
                 if min_vram and _parse_int(infer_gpu_vram(item)) < _parse_int(min_vram):
                     continue
-                if gpu_cooling and infer_gpu_cooling(item) != gpu_cooling:
+                if gpu_cooling and not (model or item_id) and infer_gpu_cooling(item) != gpu_cooling:
                     continue
             if sec == "memory" and min_capacity and _parse_int(item.get("capacity_gb")) < _parse_int(min_capacity):
                 continue
             if sec == "storage" and min_capacity and _parse_int(item.get("capacity_gb")) < _parse_int(min_capacity):
+                continue
+            if (sec in ("memory", "storage") and max_capacity
+                    and _parse_int(item.get("capacity_gb")) > _capacity_upper_bound(sec, max_capacity)):
                 continue
             if color and not color_matches(item, color):
                 continue
@@ -1008,9 +1110,12 @@ def query(category=None, budget=None, platform=None, color=None,
             results.append(item)
 
     if category:
-        results = filter_low_price_outliers(category, results)
+        if model or item_id:
+            results = keep_identity_matches_without_untrusted_prices(category, results)
+        else:
+            results = filter_low_price_outliers(category, results)
     _sort_results(results, sort, category)
-    return results[:limit]
+    return dedupe_results(category, results)[:limit]
 
 
 def _gpu_tier(item):
@@ -1043,7 +1148,8 @@ def _cpu_tier(item):
         return 610
 
     amd_scores = (
-        ("9950X3D", 900), ("9800X3D", 880), ("7800X3D", 760),
+        ("9950X3D2", 920), ("9950X3D", 900), ("9850X3D", 890),
+        ("9800X3D", 880), ("7950X3D", 800), ("7800X3D", 760),
         ("9950X", 830), ("9700X", 760), ("9900X", 730),
         ("5800X3D", 735), ("5700X3D", 710), ("9600X", 660),
         ("5500X3D", 620), ("7500F", 450),
@@ -1268,7 +1374,8 @@ def query_all(budget=None, platform=None, color=None, rgb=None, limit=5,
               has_price_only=True, include_legacy=False, sort="asc", socket=None,
               chipset=None, memory_gen=None, form_factor=None, max_length=None,
               gpu_cooling="air", gpu_chip=None, min_vram=None, min_capacity=None,
-              include_workstation_gpu=False, showcase=None, air_flow=None, dust_filter=None):
+              include_workstation_gpu=False, showcase=None, air_flow=None, dust_filter=None,
+              model=None, item_id=None, max_capacity=None):
     """Return core PC candidates grouped by category for smoke/progressive disclosure."""
     grouped = {}
     for category in CORE_CATEGORIES:
@@ -1291,6 +1398,9 @@ def query_all(budget=None, platform=None, color=None, rgb=None, limit=5,
             gpu_chip=gpu_chip,
             min_vram=min_vram,
             min_capacity=min_capacity,
+            max_capacity=max_capacity,
+            model=model,
+            item_id=item_id,
             include_workstation_gpu=include_workstation_gpu,
             showcase=showcase if category == "case" else None,
             air_flow=air_flow if category == "case" else None,
@@ -1425,6 +1535,8 @@ def main():
     parser.add_argument("--category", choices=list(CATEGORIES.keys()) + ["all"],
                         default="all", help="配件品类")
     parser.add_argument("--budget", type=int, help="单品价格上限 (元)，不是整机预算")
+    parser.add_argument("--model", help="型号关键词过滤，用于定位用户给出的现有配件")
+    parser.add_argument("--id", dest="item_id", help="精确库内 ID 过滤")
     parser.add_argument("--platform", help="平台过滤 (intel/amd)")
     parser.add_argument("--socket", help="CPU/主板 socket 过滤 (LGA1700/AM5/LGA1851)")
     parser.add_argument("--chipset", help="主板芯片组过滤 (B760/B850/X870/Z890 等)")
@@ -1440,6 +1552,8 @@ def main():
                         help="显卡最低显存容量 (GB)，例如明确要 RTX 5060 Ti 16GB 时用 --min-vram 16")
     parser.add_argument("--min-capacity", type=int,
                         help="内存最低总容量或 SSD 最低容量 (GB)；64GB 内存用 64，2TB SSD 用 2000")
+    parser.add_argument("--max-capacity", type=int,
+                        help="内存或 SSD 最高容量 (GB)；明确要 1TB SSD 时与 --min-capacity 1000 同用")
     parser.add_argument("--color", help="颜色过滤 (black/white)")
     parser.add_argument("--rgb", choices=["yes", "no"], help="RGB 过滤")
     parser.add_argument("--showcase", action="store_true", help="只返回海景房机箱")
@@ -1488,6 +1602,9 @@ def main():
             gpu_chip=args.gpu_chip,
             min_vram=args.min_vram,
             min_capacity=args.min_capacity,
+            max_capacity=args.max_capacity,
+            model=args.model,
+            item_id=args.item_id,
             include_workstation_gpu=args.include_workstation_gpu,
             showcase=args.showcase,
             air_flow=args.air_flow,
@@ -1536,6 +1653,9 @@ def main():
         gpu_chip=args.gpu_chip,
         min_vram=args.min_vram,
         min_capacity=args.min_capacity,
+        max_capacity=args.max_capacity,
+        model=args.model,
+        item_id=args.item_id,
         include_workstation_gpu=args.include_workstation_gpu,
         resolution=args.resolution,
         min_refresh=args.min_refresh,

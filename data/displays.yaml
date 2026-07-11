@@ -2972,7 +2972,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 2160p+
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 180
 - id: display-aoc-27-英寸-4k190hz-380hz-u27g4f
   brand: AOC
@@ -3525,7 +3525,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 175
   panel: OLED
 - id: display-微星-pro-mp165-e6-15-6-英寸便携显示器
@@ -3814,7 +3814,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: ''
-  size_inch: 32.0
+  size_inch: 44.5
   refresh_rate_hz: 165
   panel: OLED
 - id: display-lg-32gx850a-31-5-英寸-4k330hz
@@ -3870,16 +3870,16 @@ displays:
   size_inch: 43.0
   refresh_rate_hz: 144
   panel: Mini-LED
-- id: display-技嘉-mo27q2a-27-英寸-2880hz
+- id: display-技嘉-mo27q2a-27-英寸-280hz
   brand: 技嘉
-  model: 技嘉 MO27Q2A 27英寸2880Hz
+  model: 技嘉 MO27Q2A 27英寸280Hz
   price_cny: 2699
   price_status: channel_quote
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
   size_inch: 27.0
-  refresh_rate_hz: 2880
+  refresh_rate_hz: 280
   panel: OLED
 - id: display-技嘉-fo27q5p-27-英寸-500hz
   brand: 技嘉
@@ -4203,7 +4203,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 2160p+
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 200
 - id: display-aoc-23-8-英寸-2k-144hz-q24g51f
   brand: AOC
@@ -4315,7 +4315,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 240
 - id: display-联想-27-英寸-2k-300hz-legion-27q-11
   brand: 联想
@@ -4698,7 +4698,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 200
 - id: display-盛色-24-5-英寸-1k-420hz-d5
   brand: SANC
@@ -4758,7 +4758,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1080p
-  size_inch: 21.0
+  size_inch: 16.0
   refresh_rate_hz: 60
 - id: display-联想-23-8-英寸-1k-120hz-b2421-3
   brand: 联想
@@ -4872,7 +4872,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 614.5
+  size_inch: 27.0
   refresh_rate_hz: 320
 - id: display-优派-24-5-英寸-1k-300hz-vx2563-hd-pro
   brand: 优派
@@ -4903,7 +4903,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 180
 - id: display-宏碁-27-英寸-2k-240hz-vg272u-w2bmiipx
   brand: 宏碁
@@ -5101,7 +5101,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1080p
-  size_inch: 27.0
+  size_inch: 24.5
   refresh_rate_hz: 100
   panel: IPS技术
 - id: display-aoc-23-8-英寸-hdmi-可壁挂-24e11xhm
@@ -5579,7 +5579,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 240
 - id: display-小米-23-8-英寸-1k-100hz-p24fba-ra
   brand: 小米
@@ -5994,7 +5994,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 2160p+
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 120
 - id: display-联想-49-英寸-60hz-p49w-30
   brand: 联想
@@ -6004,7 +6004,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 49.0
   refresh_rate_hz: 60
 - id: display-联想-27-英寸-2k-60hz-p27h-30
   brand: 联想
@@ -6279,7 +6279,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 100
 - id: display-联想-27-英寸-2k-120hz-p27qd-40
   brand: 联想
@@ -6319,7 +6319,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 165
 - id: display-联想-27-英寸-2k-100hz-m2721hl
   brand: 联想
@@ -6349,7 +6349,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 240
   panel: OLED
 - id: display-泰坦军团-27-英寸-4k-60hz-h27t1u
@@ -6461,7 +6461,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 2160p+
-  size_inch: 170.0
+  size_inch: 27.0
   refresh_rate_hz: 60
 - id: display-戴尔-34-英寸-120hz-u3425we-曲面
   brand: 戴尔
@@ -6471,7 +6471,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 120
 - id: display-联想-oled-26-5-英寸-2k-500hz-w2759hx
   brand: 联想
@@ -6481,7 +6481,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 611.0
+  size_inch: 26.5
   refresh_rate_hz: 500
   panel: OLED
 - id: display-联想-23-8-英寸-1k-100hz-e24-40
@@ -6663,7 +6663,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 180
 - id: display-戴尔-32-英寸-4k-144hz-g3223q
   brand: 戴尔
@@ -6783,7 +6783,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 200
 - id: display-泰坦军团-27-英寸-4k-160hz-p2710v
   brand: 泰坦军团
@@ -6893,7 +6893,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 2160p+
-  size_inch: 27.0
+  size_inch: 28.2
   refresh_rate_hz: 60
 - id: display-创维-26-5-英寸-2k-240hz-f27g80q
   brand: 创维
@@ -6934,7 +6934,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1080p
-  size_inch: 21.0
+  size_inch: 15.6
   refresh_rate_hz: 60
 - id: display-优派-23-8-英寸-1k-240hz-vx24g10-w
   brand: 优派
@@ -7095,7 +7095,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 2160p+
-  size_inch: 32.0
+  size_inch: 40.0
   refresh_rate_hz: 144
 - id: display-海信-27-英寸-2k-180hz-27g5k-pro-03
   brand: 海信
@@ -7165,7 +7165,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1440p
-  size_inch: 32.0
+  size_inch: 34.0
   refresh_rate_hz: 240
 - id: display-aoc-爱攻-41-5-英寸-4k144hz-ag421uda
   brand: AOC
@@ -7175,7 +7175,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 2160p+
-  size_inch: 32.0
+  size_inch: 41.5
   refresh_rate_hz: 144
 - id: display-hkc-27-英寸-2k-高清-180hz-g27m2
   brand: HKC
@@ -7326,7 +7326,7 @@ displays:
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
   resolution: 1080p
-  size_inch: 32.0
+  size_inch: 24.0
   refresh_rate_hz: 100
   panel: VA
 - id: display-三星-24-英寸-s36gd-100hz-fhd-曲面-2

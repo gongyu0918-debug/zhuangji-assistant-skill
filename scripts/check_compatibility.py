@@ -423,10 +423,8 @@ class CompatibilityChecker:
         special_case = model_special or small_psu_only
         psu_size = self._normalize(psu.get("form_factor"))
         if not psu_size:
-            if "ATX" in case_psu_support and not special_case:
-                psu_size = "ATX"
-            else:
-                return {"type": "msg", "msg": "小机箱或特殊电源位需要确认电源规格(ATX/SFX/SFX-L/FLEX)及限长/限高"}
+            return {"type": "skipped",
+                "msg": "电源缺少规格字段，普通机箱虽通常使用ATX电源，仍需确认实际为ATX/SFX/SFX-L/FLEX及限长/限高"}
         if not case_psu_support:
             return {"type": "msg", "msg": "机箱缺少电源规格支持信息，需下单前复核"}
 

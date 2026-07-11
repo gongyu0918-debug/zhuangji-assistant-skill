@@ -896,7 +896,7 @@ cpus:
   power_w: 65
 - id: cpu-intel-intecoreultra7265
   brand: INTEL
-  model: Inte Core Ultra 7 265
+  model: Intel Core Ultra 7 265
   price_cny: 2549
   price_status: channel_quote
   price_date: '2026-07-10'
@@ -992,7 +992,7 @@ cpus:
   power_w: 65
 - id: cpu-intel-intecoreultra9285
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 4099
   price_status: channel_quote
   price_date: '2026-06-30'
@@ -1076,7 +1076,7 @@ cpus:
   power_w: 65
 - id: cpu-intel-intecoreultrau5225f
   brand: INTEL
-  model: Inte Core Ultra U5 225F
+  model: Intel Core Ultra U5 225F
   price_cny: 879
   price_status: channel_quote
   price_date: '2026-06-30'
@@ -1268,7 +1268,7 @@ cpus:
   power_w: 65
 - id: cpu-intel-intecorei513600kf
   brand: INTEL
-  model: Inte Core i5 13600KF
+  model: Intel Core i5 13600KF
   price_cny: 1426
   price_status: channel_quote
   price_date: '2026-07-10'
@@ -1412,7 +1412,7 @@ cpus:
   power_w: 250
 - id: cpu-intel-intecoreultrau5235
   brand: intel
-  model: Inte Core Ultra U5 235
+  model: Intel Core Ultra U5 235
   price_cny: 1699
   price_status: channel_quote
   price_date: '2026-07-10'
@@ -1652,7 +1652,7 @@ cpus:
   power_w: 65
 - id: cpu-intel-intecoreultrau5225f-84453630
   brand: INTEL
-  model: Inte Core Ultra U5 225F
+  model: Intel Core Ultra U5 225F
   price_cny: 879
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -1784,7 +1784,7 @@ cpus:
   power_w: 250
 - id: cpu-intel-intecoreultra9285-5566e153
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 4784
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -1940,7 +1940,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultrau5225f-182f7804
   brand: INTEL
-  model: Inte Core Ultra U5 225F
+  model: Intel Core Ultra U5 225F
   price_cny: 1049
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -1952,7 +1952,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultrau5225f-85f6c74a
   brand: INTEL
-  model: Inte Core Ultra U5 225F
+  model: Intel Core Ultra U5 225F
   price_cny: 1289
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -1964,7 +1964,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultrau5225f-68ce9332
   brand: INTEL
-  model: Inte Core Ultra U5 225F
+  model: Intel Core Ultra U5 225F
   price_cny: 864
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -1976,7 +1976,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultrau5225f-308e2816
   brand: INTEL
-  model: Inte Core Ultra U5 225F
+  model: Intel Core Ultra U5 225F
   price_cny: 844
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -1988,7 +1988,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultrau5225f-a5c50c3c
   brand: INTEL
-  model: Inte Core Ultra U5 225F
+  model: Intel Core Ultra U5 225F
   price_cny: 864
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -2000,7 +2000,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultrau5225f-987eed97
   brand: INTEL
-  model: Inte Core Ultra U5 225F
+  model: Intel Core Ultra U5 225F
   price_cny: 879
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -2072,7 +2072,7 @@ cpus:
   power_w: 250
 - id: cpu-intel-intecoreultra9285-08179f1d
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 4184
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -2084,7 +2084,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultra9285-9a27c152
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 3929
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -2096,7 +2096,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultra9285-88be796d
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 4249
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -2108,7 +2108,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultra9285-878f0856
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 4889
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -2120,7 +2120,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultra9285-c5d66658
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 4889
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -2132,7 +2132,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultra9285-aa04a5ea
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 4399
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -2144,7 +2144,7 @@ cpus:
   power_w: 125
 - id: cpu-intel-intecoreultra9285-fe48f7fe
   brand: INTEL
-  model: Inte Core Ultra 9 285
+  model: Intel Core Ultra 9 285
   price_cny: 3929
   price_status: channel_quote
   price_date: '2026-07-03'
@@ -30940,7 +30940,7 @@ storage:
   price_status: channel_quote
   price_date: '2026-07-10'
   model_code: LEGEND 800
-  capacity_tb: 1.0
+  capacity_tb: 0.48828125
   form_factor: M.2 2280
   interface: M.2
   pcie_generation: 4
@@ -31759,7 +31759,7 @@ storage:
   price_status: channel_quote
   price_date: '2026-07-10'
   model_code: N930E PRO
-  capacity_tb: 0.1171875
+  capacity_tb: 0.5
   form_factor: M.2 2280
   interface: M.2
   pcie_generation: 3
@@ -32097,7 +32097,7 @@ storage:
   price_status: channel_quote
   price_date: '2026-07-10'
   model_code: S910Pro
-  capacity_tb: 2.0
+  capacity_tb: 4.0
   form_factor: M.2 2280
   interface: M.2
   pcie_generation: 5
@@ -32916,7 +32916,7 @@ storage:
   price_status: channel_quote
   price_date: '2026-07-10'
   model_code: LEGEND 800
-  capacity_tb: 0.48828125
+  capacity_tb: 1.0
   form_factor: M.2 2280
   interface: M.2
   pcie_generation: 4
@@ -33072,7 +33072,7 @@ storage:
   price_status: channel_quote
   price_date: '2026-07-10'
   model_code: N930E PRO
-  capacity_tb: 0.244140625
+  capacity_tb: 0.5
   form_factor: M.2 2280
   interface: M.2
   pcie_generation: 3
@@ -33904,7 +33904,7 @@ storage:
   price_status: channel_quote
   price_date: '2026-07-10'
   model_code: S70 BLADE
-  capacity_tb: 1.0
+  capacity_tb: 4.0
   form_factor: M.2 2280
   interface: M.2
   pcie_generation: 4
@@ -34281,7 +34281,7 @@ storage:
   price_status: channel_quote
   price_date: '2026-07-10'
   model_code: S150
-  capacity_tb: 2.0
+  capacity_tb: 4.0
   form_factor: M.2 2280
   interface: M.2
   pcie_generation: 5
@@ -35451,7 +35451,7 @@ storage:
   price_status: channel_quote
   price_date: '2026-07-10'
   model_code: M.2 2TB SSD固态硬盘
-  capacity_tb: 0.244140625
+  capacity_tb: 2.0
   form_factor: M.2 2280
   interface: M.2
   pcie_generation: 3
@@ -36135,18 +36135,20 @@ gpus:
   brand: Generic
   chip: RX 9070 XT
 - id: gpu-intel-arc-b570-aic
-  model: Arc B570 Index 10G 2500MHz GDDR6
+  model: 蓝戟 Arc B570 Index 10G 2500MHz GDDR6
   vram_gb: 10
+  memory_type: GDDR6
   length_mm: 244
   power_w: 150
   power_connectors:
   - 1x8pin
-  color: 黑
+  requires_16pin_psu: false
+  color: black
   rgb: false
   price_cny: 1599
   price_status: channel_quote
   price_date: '2026-06-30'
-  brand: Generic
+  brand: 蓝戟
   chip: Arc B570
 - id: gpu-intel-arc-b580-aic
   model: Intel Arc B580 index 12GB
@@ -42733,12 +42735,13 @@ gpus:
   gpu_vendor: Intel
   vram_gb: 10
   memory_type: GDDR6
-  length_mm: 400
+  length_mm: 244
   color: black
   rgb: false
-  power_connectors: []
+  power_connectors:
+  - 1x8pin
   requires_16pin_psu: false
-  power_w: 190
+  power_w: 150
 - id: gpu-rtx5070oc12gnebula
   brand: 万丽
   model: 万丽 RTX5070 OC 12G Nebula 星云
@@ -53609,7 +53612,7 @@ coolers:
   color: black
   rgb: false
   radiator_mm: 240
-- id: cooler
+- id: cooler-lianli-hydroshift-no-fan-black
   brand: 联力
   model: 联力 隐流 无风扇版 一体式水冷散热器 黑色
   price_cny: 699
@@ -76950,9 +76953,9 @@ fans:
   price_status: channel_quote
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
-  fan_type: case_fan
-  default_recommend: true
-  color: white
+  fan_type: accessory
+  default_recommend: false
+  color: black
   rgb: true
   blade_direction: reverse
   has_screen: false
@@ -84128,8 +84131,8 @@ fans:
   price_status: channel_quote
   price_date: '2026-07-10'
   price_source_type: 电商网站公开报价
-  fan_type: case_fan
-  default_recommend: true
+  fan_type: accessory
+  default_recommend: false
   color: white
   rgb: true
   blade_direction: reverse

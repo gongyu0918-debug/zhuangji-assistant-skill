@@ -2,6 +2,8 @@
 
 兼容性由 `scripts/check_compatibility.py` 执行，最终配置必须使用 `--strict --require-complete`。不要手动替代脚本判断。
 
+`power_w` 用于电源余量检查，按可见峰值、PPT/MTP 或保守负载估算维护，不等同于厂商页面的默认 TDP；不要据此向用户宣称官方 TDP。
+
 脚本把“是否存在硬不兼容”和“证据字段是否完整”分开报告：`status=complete` 表示未发现硬不兼容且没有待复核项；`needs_review` 表示没有硬错误，但仍有警告、信息或需要复核的跳过项；`incompatible` 表示存在硬错误。为兼容已有调用，单独使用 `--strict` 仍只在硬不兼容时返回非零；加 `--require-complete` 后，完整通过返回 `0`，硬不兼容返回 `1`，待复核返回 `2`。
 
 脚本覆盖 CPU/主板 socket、内存代际/数量/容量、显卡限长、M.2/SATA 数量、电源功率、显卡供电、散热限高/冷排位、机箱主板版型和电源规格；若机箱或电源有 `psu_length_mm` / `psu_max_length_mm` / `psu_clearance_mm` / `length_mm` 字段，还会复核电源限长。部分 ITX、卧式、小型机箱会另有电源限高、转接支架和硬盘笼空间限制；库内没有结构化字段时必须列为下单前人工复核项，不写成完整通过。
