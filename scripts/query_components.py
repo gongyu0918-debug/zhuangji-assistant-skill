@@ -53,7 +53,7 @@ DEDUPE_SPEC_FIELDS = {
     "cpu": ("socket", "power_w"),
     "mb": ("socket", "memory_generations", "form_factor", "memory_slots", "m2_slots", "sata_ports"),
     "memory": ("generation", "capacity_gb", "module_count", "frequency_mt", "timing", "color", "rgb"),
-    "storage": ("capacity_gb", "capacity_tb", "interface", "pcie_generation", "form_factor"),
+    "storage": ("capacity_gb", "capacity_tb", "interface", "pcie_generation", "form_factor", "dram_cache"),
     "gpu": (
         "chip", "vram_gb", "memory_type", "gpu_cooling", "color",
         "length_mm", "power_w", "power_connectors", "requires_16pin_psu",
@@ -94,7 +94,8 @@ SUMMARY_FIELDS_BY_CATEGORY = {
         "generation", "capacity_gb", "module_count", "frequency_mt", "timing", "color", "rgb",
     ],
     "storage": SUMMARY_BASE_FIELDS + [
-        "capacity_tb", "capacity_gb", "form_factor", "interface", "pcie_generation", "storage_type", "series",
+        "capacity_tb", "capacity_gb", "form_factor", "interface", "pcie_generation", "storage_type",
+        "dram_cache", "dram_cache_mb", "series",
     ],
     "gpu": SUMMARY_BASE_FIELDS + [
         "chip", "gpu_vendor", "vram_gb", "memory_type", "memory_bus_bit",
@@ -968,7 +969,7 @@ def query(category=None, budget=None, platform=None, color=None,
           resolution=None, min_refresh=None, air_flow=None, dust_filter=None,
           fan_size=None, blade_direction=None, linkable=None, screen=None,
           radiator_bundle=None, fan_type=None, model=None, item_id=None,
-          max_capacity=None):
+          max_capacity=None, pcie_generation=None, dram_cache=None):
     """查询配件。返回匹配的配件列表。"""
     if gpu_cooling == "any":
         gpu_cooling = None
@@ -1098,6 +1099,10 @@ def query(category=None, budget=None, platform=None, color=None,
             if sec == "memory" and min_capacity and _parse_int(item.get("capacity_gb")) < _parse_int(min_capacity):
                 continue
             if sec == "storage" and min_capacity and _parse_int(item.get("capacity_gb")) < _parse_int(min_capacity):
+                continue
+            if sec == "storage" and pcie_generation and _parse_int(item.get("pcie_generation")) != _parse_int(pcie_generation):
+                continue
+            if sec == "storage" and not _matches_optional_bool(item, "dram_cache", dram_cache):
                 continue
             if (sec in ("memory", "storage") and max_capacity
                     and _parse_int(item.get("capacity_gb")) > _capacity_upper_bound(sec, max_capacity)):
@@ -1554,6 +1559,10 @@ def main():
                         help="内存最低总容量或 SSD 最低容量 (GB)；64GB 内存用 64，2TB SSD 用 2000")
     parser.add_argument("--max-capacity", type=int,
                         help="内存或 SSD 最高容量 (GB)；明确要 1TB SSD 时与 --min-capacity 1000 同用")
+    parser.add_argument("--pcie-generation", type=int, choices=[3, 4, 5],
+                        help="SSD PCIe 代际过滤；高端 Gen5 候选用 5")
+    parser.add_argument("--dram-cache", choices=["yes", "no"],
+                        help="SSD 是否已确认独立 DRAM 缓存；yes 不包含字段未知条目")
     parser.add_argument("--color", help="颜色过滤 (black/white)")
     parser.add_argument("--rgb", choices=["yes", "no"], help="RGB 过滤")
     parser.add_argument("--showcase", action="store_true", help="只返回海景房机箱")
@@ -1654,6 +1663,8 @@ def main():
         min_vram=args.min_vram,
         min_capacity=args.min_capacity,
         max_capacity=args.max_capacity,
+        pcie_generation=args.pcie_generation,
+        dram_cache=(True if args.dram_cache == "yes" else False) if args.dram_cache else None,
         model=args.model,
         item_id=args.item_id,
         include_workstation_gpu=args.include_workstation_gpu,

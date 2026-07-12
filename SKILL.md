@@ -16,7 +16,7 @@ license: MIT
 1. 识别需求并按分支只读必要 reference。
    - 所有需求先读 `references/routing.md`；只有要给具体型号、完整配置、升级、补全或搭配检查时，再读 `references/selection-policy.md`。
    - 命中 3A/FPS、直播、本地 agent 硬件配置、ComfyUI、PS/剪辑/AE/Blender/UE/CAD、黑白海景房、无光、ITX、背插、水冷显卡或 RTX PRO 时，再读 `references/scenarios.md`。
-   - 升级、补全或检查读 `references/workflows.md`；硬件选择和软硬件协同问答读 `references/hardware-faq.md`；游戏帧率读 `references/game-performance.md`。
+   - 升级、补全、检查或指定配件替换后重算报价读 `references/workflows.md`；硬件选择和软硬件协同问答读 `references/hardware-faq.md`；游戏帧率读 `references/game-performance.md`。
    - 仅在对应口径不清楚时读取 `references/pricing.md`、`references/compatibility.md` 或 `references/hardware-scope.md`。
 2. 查候选。运行 `scripts/query_components.py`，不要直接打开 `data/*.yaml`。完整配置至少分别查询 CPU、主板、内存、硬盘、显卡、散热、电源、机箱；中高端显卡、主板、SSD 和内存优先用 `--sort tier`；用户给出现有型号时用 `--model` 定位，已知库内 ID 时用 `--id` 精确定位，定位结果若缺价只用于兼容检查，不参与总价；明确 1TB/2TB 等容量时同时设置 `--min-capacity` 和 `--max-capacity`，避免更大容量挤占首屏。显示器只在用户明确要求“带显示器/推荐显示器”时用 `--category display` 或 `--category monitor` 单独查询。风扇只在海景房补风扇、水冷夹汉堡、风道/无光风扇或用户明确要风扇时用 `--category fan` 单独查询，不进入 `all`。`--budget` 是单品价格上限，不是整机预算。
 3. 做兼容性。最终推荐必须运行 `scripts/check_compatibility.py --strict --require-complete`，传入所有核心配件。退出码 `1` 表示存在硬不兼容，`2` 表示未发现硬不兼容但仍有待复核字段，只有退出码 `0` 才能写完整通过；优先换字段完整的候选，确实无字段时单独列人工复核项。

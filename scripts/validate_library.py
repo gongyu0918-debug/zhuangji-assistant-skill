@@ -119,9 +119,35 @@ def _explicit_display_size_inch(item):
 
 
 def _explicit_display_refresh_hz(item):
-    """Read an explicit refresh-rate token from a display model."""
-    match = re.search(r"(?<!\d)(\d{2,4})\s*HZ", str(item.get("model", "")), re.IGNORECASE)
-    return int(match.group(1)) if match else None
+    """Read the native-resolution refresh token without merging dual-mode rates."""
+    values = [
+        int(value)
+        for value in re.findall(r"(?<!\d)(\d{2,4})\s*HZ", str(item.get("model", "")), re.IGNORECASE)
+        if 20 <= int(value) <= 1000
+    ]
+    model = str(item.get("model", ""))
+    if ("双模" in model or len(set(values)) > 1) and values:
+        return values[0]
+    return max(values) if values else None
+
+
+MOTHERBOARD_CHIPSET_TOKENS = (
+    "X870E", "X670E", "B650E", "B850", "X870", "X670", "B650", "A620", "A820",
+    "Z890", "Z790", "Z690", "B860", "B760", "B660", "H810", "H610",
+)
+
+
+def _explicit_motherboard_chipset(item):
+    """Infer the longest chipset token explicitly present in model or id."""
+    text = str(item.get("model") or item.get("id") or "").upper()
+    return next((token for token in MOTHERBOARD_CHIPSET_TOKENS if token in text), None)
+
+
+def _canonical_motherboard_chipset(value):
+    chipset = str(value or "").upper().replace(" ", "")
+    if chipset.endswith("M") and chipset[:-1] in MOTHERBOARD_CHIPSET_TOKENS:
+        return chipset[:-1]
+    return chipset
 
 
 def _valid_fan_mounts(value):
@@ -256,6 +282,13 @@ def main():
                 consistency_error = _check_cpu_vendor_consistency(item)
                 if consistency_error:
                     errors.append(f"{section}.{item_id}: {consistency_error}")
+            if section == "motherboards":
+                explicit_chipset = _explicit_motherboard_chipset(item)
+                chipset = _canonical_motherboard_chipset(item.get("chipset"))
+                if explicit_chipset and chipset and explicit_chipset != chipset:
+                    errors.append(
+                        f"{section}.{item_id}: chipset={chipset} conflicts with model token {explicit_chipset}"
+                    )
             if section == "gpus" and item.get("length_mm"):
                 try:
                     gpu_length = int(item.get("length_mm"))

@@ -1,18 +1,19 @@
 metadata:
-  price_date: 2026-07-09
+  price_date: 2026-07-12
   source_type: network_public_price_observation
   scope: default_lower_bound_only
   notes:
     - CPU uses explicit daily low price floors only; it does not use same-model outlier grouping.
     - Floors are lower-bound trust references for default recommendations, not upper price caps.
-    - 2026-07-09 user-provided daily floor images cover GPUs, memory kits and SSDs; CPU floors are retained until the next explicit CPU daily floor evidence.
+    - 2026-07-12 user-provided daily floor images cover CPUs, current GPUs, memory kits and SSDs.
+    - Legacy GPU rows not present in the 2026-07-12 daily table retain their last explicit 2026-07-09 lower-bound evidence; trend charts are not transcribed as daily floors.
 cpus:
   - model: U7-270KPLUS
     floor_cny: 1929
   - model: U7-265K
-    floor_cny: 1559
+    floor_cny: 1529
   - model: U7-265KF
-    floor_cny: 1559
+    floor_cny: 1529
   - model: U5-250K
     floor_cny: 1364
   - model: U5-250KF
@@ -30,25 +31,25 @@ cpus:
   - model: I7-14700KF
     floor_cny: 2178
   - model: I5-14600K
-    floor_cny: 1486
+    floor_cny: 1549
   - model: I5-14600KF
-    floor_cny: 1486
+    floor_cny: 1549
   - model: R9-9950X
     floor_cny: 2749
   - model: R9-9900X
-    floor_cny: 2249
+    floor_cny: 2299
   - model: R7-9700X
-    floor_cny: 1419
+    floor_cny: 1389
   - model: R5-9600X
-    floor_cny: 1059
+    floor_cny: 1060
   - model: R5-9500F
-    floor_cny: 839
+    floor_cny: 869
   - model: R9-9950X3D
-    floor_cny: 4080
+    floor_cny: 3875
   - model: R7-9850X3D
-    floor_cny: 2849
+    floor_cny: 2769
   - model: R7-9800X3D
-    floor_cny: 2630
+    floor_cny: 2509
   - model: R7-7800X3D
     floor_cny: 1755
   - model: R5-7500F
@@ -56,31 +57,31 @@ cpus:
 gpus:
   - chip: RTX5090
     min_vram_gb: 32
-    floor_cny: 27429
+    floor_cny: 28399
   - chip: RTX5090D
     min_vram_gb: 32
-    floor_cny: 27429
+    floor_cny: 28399
   - chip: RTX5090DV2
     min_vram_gb: 24
-    floor_cny: 19399
+    floor_cny: 18800
   - chip: RTX5080
     min_vram_gb: 16
-    floor_cny: 8888
+    floor_cny: 8894
   - chip: RTX5070TI
     min_vram_gb: 16
-    floor_cny: 7099
+    floor_cny: 7189
   - chip: RTX5070
     min_vram_gb: 12
-    floor_cny: 4789
+    floor_cny: 4750
   - chip: RTX5060TI
     min_vram_gb: 16
-    floor_cny: 3860
+    floor_cny: 3800
   - chip: RTX5060TI
     max_vram_gb: 8
-    floor_cny: 2799
+    floor_cny: 2778
   - chip: RTX5060
     min_vram_gb: 8
-    floor_cny: 2349
+    floor_cny: 2299
   - chip: RTX5050
     min_vram_gb: 8
     floor_cny: 1850
@@ -92,19 +93,19 @@ gpus:
     floor_cny: 1350
   - chip: RX9070XT
     min_vram_gb: 16
-    floor_cny: 4249
+    floor_cny: 4250
   - chip: RX9070GRE
     min_vram_gb: 12
     floor_cny: 3279
   - chip: RX9070
     min_vram_gb: 16
-    floor_cny: 3808
+    floor_cny: 3968
   - chip: RX9060XT
     min_vram_gb: 16
-    floor_cny: 2549
+    floor_cny: 2532
   - chip: RX9060XT
     max_vram_gb: 8
-    floor_cny: 2049
+    floor_cny: 2099
   - chip: RX7900XT
     min_vram_gb: 20
     floor_cny: 3184
@@ -118,7 +119,7 @@ memory:
   - generation: DDR4
     capacity_gb: 16
     module_count: 2
-    floor_cny: 375
+    floor_cny: 380
   - generation: DDR4
     capacity_gb: 32
     module_count: 2
@@ -126,29 +127,29 @@ memory:
   - generation: DDR5
     capacity_gb: 32
     module_count: 2
-    floor_cny: 2199
+    floor_cny: 2099
   - generation: DDR5
     capacity_gb: 48
     module_count: 2
-    floor_cny: 3299
+    floor_cny: 3329
   - generation: DDR5
     capacity_gb: 64
     module_count: 2
-    floor_cny: 4385
+    floor_cny: 4395
   - generation: DDR5
     capacity_gb: 96
     module_count: 2
-    floor_cny: 7532
+    floor_cny: 7609
 storage:
   - pcie_generation: 3
     capacity_gb: 1000
     floor_cny: 825
   - pcie_generation: 3
     capacity_gb: 2000
-    floor_cny: 1479
+    floor_cny: 1419
   - pcie_generation: 4
     capacity_gb: 1000
-    floor_cny: 875
+    floor_cny: 877
   - pcie_generation: 4
     capacity_gb: 2000
-    floor_cny: 1500
+    floor_cny: 1523
