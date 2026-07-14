@@ -74,7 +74,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070"
     avg_fps: [216, 216]
     fps_range: [170, 259]
-    confidence: high
+    confidence: medium
     sample_count: 1227
     vram_gb: 7.9
     dram_gb: 19.1
@@ -88,7 +88,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070"
     avg_fps: [405, 405]
     fps_range: [349, 466]
-    confidence: high
+    confidence: medium
     sample_count: 289
     vram_gb: 4.2
     dram_gb: 15.1
@@ -102,7 +102,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070"
     avg_fps: [175, 175]
     fps_range: [110, 235]
-    confidence: high
+    confidence: medium
     sample_count: 159
     vram_gb: 8.0
     dram_gb: 17.3
@@ -130,7 +130,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070"
     avg_fps: [313, 313]
     fps_range: [258, 366]
-    confidence: high
+    confidence: medium
     sample_count: 141
     vram_gb: 7.2
     dram_gb: 20.1
@@ -144,7 +144,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070"
     avg_fps: [241, 241]
     fps_range: [184, 288]
-    confidence: high
+    confidence: medium
     sample_count: 1920
     vram_gb: 7.9
     dram_gb: 19.4
@@ -158,7 +158,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070"
     avg_fps: [564, 564]
     fps_range: [496, 636]
-    confidence: high
+    confidence: medium
     sample_count: 459
     vram_gb: 4.3
     dram_gb: 15.4
@@ -186,7 +186,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070"
     avg_fps: [274, 274]
     fps_range: [211, 334]
-    confidence: high
+    confidence: medium
     sample_count: 1119
     vram_gb: 6.7
     dram_gb: 17.4
@@ -200,7 +200,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070"
     avg_fps: [207, 207]
     fps_range: [125, 269]
-    confidence: high
+    confidence: medium
     sample_count: 113
     vram_gb: 7.8
     dram_gb: 18.3
@@ -228,7 +228,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [356, 356]
     fps_range: [272, 430]
-    confidence: high
+    confidence: medium
     sample_count: 114
     vram_gb: 7.2
     dram_gb: 20.0
@@ -242,7 +242,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [255, 255]
     fps_range: [181, 326]
-    confidence: high
+    confidence: medium
     sample_count: 3144
     vram_gb: 8.0
     dram_gb: 17.9
@@ -256,7 +256,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [543, 543]
     fps_range: [447, 635]
-    confidence: high
+    confidence: medium
     sample_count: 1047
     vram_gb: 4.4
     dram_gb: 14.2
@@ -270,7 +270,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [378, 378]
     fps_range: [322, 450]
-    confidence: high
+    confidence: medium
     sample_count: 272
     vram_gb: 8.1
     dram_gb: 15.1
@@ -284,7 +284,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [307, 307]
     fps_range: [229, 359]
-    confidence: high
+    confidence: medium
     sample_count: 2170
     vram_gb: 6.8
     dram_gb: 16.3
@@ -298,7 +298,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [214, 214]
     fps_range: [149, 269]
-    confidence: high
+    confidence: medium
     sample_count: 645
     vram_gb: 8.2
     dram_gb: 18.1
@@ -312,7 +312,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [195, 195]
     fps_range: [126, 267]
-    confidence: high
+    confidence: medium
     sample_count: 383
     vram_gb: 9.7
     dram_gb: 15.3
@@ -326,7 +326,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [166, 166]
     fps_range: [131, 207]
-    confidence: high
+    confidence: medium
     sample_count: 508
     vram_gb: 10.1
     dram_gb: 19.0
@@ -340,7 +340,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [153, 153]
     fps_range: [102, 218]
-    confidence: high
+    confidence: medium
     sample_count: 348
     vram_gb: 10.0
     dram_gb: 18.5
@@ -354,7 +354,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5070 Ti"
     avg_fps: [143, 143]
     fps_range: [96, 203]
-    confidence: high
+    confidence: medium
     sample_count: 269
     vram_gb: 12.1
     dram_gb: 16.0
@@ -368,7 +368,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5080"
     avg_fps: [176, 176]
     fps_range: [117, 251]
-    confidence: high
+    confidence: medium
     sample_count: 580
     vram_gb: 8.8
     dram_gb: 18.3
@@ -382,7 +382,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5080"
     avg_fps: [201, 201]
     fps_range: [131, 263]
-    confidence: high
+    confidence: medium
     sample_count: 412
     vram_gb: 10.4
     dram_gb: 15.8
@@ -396,7 +396,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5080"
     avg_fps: [182, 182]
     fps_range: [144, 228]
-    confidence: high
+    confidence: medium
     sample_count: 1394
     vram_gb: 10.2
     dram_gb: 19.2
@@ -410,7 +410,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5080"
     avg_fps: [512, 512]
     fps_range: [414, 594]
-    confidence: high
+    confidence: medium
     sample_count: 437
     vram_gb: 5.9
     dram_gb: 15.3
@@ -424,7 +424,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5080"
     avg_fps: [146, 146]
     fps_range: [98, 207]
-    confidence: high
+    confidence: medium
     sample_count: 1021
     vram_gb: 10.6
     dram_gb: 18.6
@@ -438,7 +438,7 @@ benchmarks:
     gpu: "NVIDIA GeForce RTX 5080"
     avg_fps: [163, 163]
     fps_range: [114, 218]
-    confidence: high
+    confidence: medium
     sample_count: 841
     vram_gb: 12.3
     dram_gb: 16.3

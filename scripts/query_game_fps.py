@@ -246,7 +246,7 @@ def format_human(result):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Query rough game FPS reference ranges.")
     parser.add_argument("--game", required=True, help="游戏名或别名，例如 三角洲/打瓦/3A")
-    parser.add_argument("--resolution", default="1080p", help="1080p/1K/1440p/2K/2160p/4K")
+    parser.add_argument("--resolution", required=True, help="必须明确分辨率: 1080p/1K/1440p/2K/2160p/4K")
     parser.add_argument("--preset", help="competitive_low/high_no_rt/rt_dlss_fg")
     parser.add_argument("--cpu", default="", help="已选 CPU 型号")
     parser.add_argument("--gpu", default="", help="已选显卡型号或芯片")

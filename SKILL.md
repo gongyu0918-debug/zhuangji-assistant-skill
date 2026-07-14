@@ -45,6 +45,6 @@ license: MIT
 ## 脚本
 
 - `scripts/query_components.py`: 查询候选，默认摘要输出，`--detail` 才展开更多字段。
-- `scripts/check_compatibility.py`: 11 项兼容性检查，最终配置用 `--strict --require-complete` 区分硬兼容和字段完整度。
+- `scripts/check_compatibility.py`: 12 类基础兼容性检查，最终配置用 `--strict --require-complete` 区分硬兼容和字段完整度。
 - `scripts/query_game_fps.py`: 查询已收录游戏帧率参考样本；不做硬件倍率推算。
 - `scripts/validate_library.py`: 发布前/维护时校验库结构和关键字段完整度。

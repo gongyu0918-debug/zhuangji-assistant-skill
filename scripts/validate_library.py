@@ -73,14 +73,17 @@ COVERAGE_FIELDS = {
     "gpus": ["length_mm", "requires_16pin_psu"],
     "motherboards": ["m2_slots", "sata_ports", "memory_freq_max"],
     "memory": ["timing"],
-    "storage": ["pcie_generation"],
+    "storage": ["pcie_generation", "dram_cache", "dram_cache_mb"],
     "coolers": ["type", "radiator_mm", "rgb"],
     "psus": ["wattage_w", "form_factor", "length_mm", "modular", "native_16pin_gpu_power"],
     "fans": [
         "size_mm", "color", "rgb", "blade_direction", "is_linkable",
         "has_screen", "fan_type", "default_recommend", "pack_count",
     ],
-    "cases": ["gpu_length_mm", "cpu_cooler_height_mm", "radiator_support", "fan_mounts", "psu_length_mm"],
+    "cases": [
+        "gpu_length_mm", "cpu_cooler_height_mm", "radiator_support", "fan_mounts",
+        "psu_length_mm", "psu_length_recommended_mm",
+    ],
     "displays": ["resolution", "size_inch", "refresh_rate_hz"],
 }
 
@@ -289,6 +292,10 @@ def main():
                     errors.append(
                         f"{section}.{item_id}: chipset={chipset} conflicts with model token {explicit_chipset}"
                     )
+                memory_freq_max = item.get("memory_freq_max")
+                if memory_freq_max not in (None, ""):
+                    if isinstance(memory_freq_max, bool) or not isinstance(memory_freq_max, int) or not 1600 <= memory_freq_max <= 12000:
+                        errors.append(f"{section}.{item_id}: invalid memory_freq_max={memory_freq_max}")
             if section == "gpus" and item.get("length_mm"):
                 try:
                     gpu_length = int(item.get("length_mm"))
@@ -328,6 +335,9 @@ def main():
                         f"{section}.{item_id}: module_count={item.get('module_count')} "
                         f"conflicts with model-inferred {inferred_modules}"
                     )
+                timing = item.get("timing")
+                if timing and not re.fullmatch(r"C(?:1[0-9]|[2-7][0-9]|80)", str(timing).upper()):
+                    errors.append(f"{section}.{item_id}: invalid timing={timing}")
             if section == "storage":
                 inferred_capacity = infer_capacity_gb(item)
                 raw_capacity_tb = item.get("capacity_tb")
@@ -343,11 +353,26 @@ def main():
                             f"{section}.{item_id}: capacity_tb={raw_capacity_tb} "
                             f"conflicts with model-inferred {inferred_capacity}GB"
                         )
+                if "dram_cache" in item and not isinstance(item.get("dram_cache"), bool):
+                    errors.append(f"{section}.{item_id}: invalid dram_cache={item.get('dram_cache')}")
+                if item.get("dram_cache_mb") not in (None, ""):
+                    dram_cache_mb = item.get("dram_cache_mb")
+                    if isinstance(dram_cache_mb, bool) or not isinstance(dram_cache_mb, int) or not 1 <= dram_cache_mb <= 32768:
+                        errors.append(f"{section}.{item_id}: invalid dram_cache_mb={dram_cache_mb}")
+                    if item.get("dram_cache") is not True:
+                        errors.append(f"{section}.{item_id}: dram_cache_mb requires dram_cache=true")
             if section == "coolers":
                 inferred_type = infer_cooler_type(item)
                 raw_type = str(item.get("type") or "").lower()
                 if inferred_type == "liquid" and raw_type not in {"liquid", "water", "水冷"}:
                     errors.append(f"{section}.{item_id}: type={item.get('type')} conflicts with model-inferred liquid cooler")
+            if section == "psus" and item.get("length_mm") not in (None, ""):
+                length_mm = item.get("length_mm")
+                if isinstance(length_mm, bool) or not isinstance(length_mm, int) or not 80 <= length_mm <= 300:
+                    errors.append(f"{section}.{item_id}: invalid length_mm={length_mm}")
+            if section == "psus" and item.get("form_factor") not in (None, ""):
+                if item.get("form_factor") not in {"ATX", "SFX", "SFX-L", "FLEX", "TFX"}:
+                    errors.append(f"{section}.{item_id}: invalid form_factor={item.get('form_factor')}")
             if section == "fans":
                 if CPU_AIR_COOLER_RE.search(str(item.get("model", ""))):
                     errors.append(f"{section}.{item_id}: CPU/memory cooler classified as fan")
@@ -431,6 +456,21 @@ def main():
             warnings.append(f"cases.{case_id}: no gpu_length_mm")
         if not _valid_fan_mounts(case.get("fan_mounts")):
             errors.append(f"cases.{case_id}: invalid fan_mounts={case.get('fan_mounts')}")
+        if case.get("psu_length_mm") not in (None, ""):
+            psu_length_mm = case.get("psu_length_mm")
+            if isinstance(psu_length_mm, bool) or not isinstance(psu_length_mm, int) or not 80 <= psu_length_mm <= 500:
+                errors.append(f"cases.{case_id}: invalid psu_length_mm={psu_length_mm}")
+        if case.get("psu_length_recommended_mm") not in (None, ""):
+            recommended_mm = case.get("psu_length_recommended_mm")
+            if isinstance(recommended_mm, bool) or not isinstance(recommended_mm, int) or not 80 <= recommended_mm <= 500:
+                errors.append(f"cases.{case_id}: invalid psu_length_recommended_mm={recommended_mm}")
+            elif case.get("psu_length_mm") and recommended_mm > case.get("psu_length_mm"):
+                errors.append(
+                    f"cases.{case_id}: psu_length_recommended_mm={recommended_mm} "
+                    f"exceeds psu_length_mm={case.get('psu_length_mm')}"
+                )
+        if "psu_length_condition" in case and not str(case.get("psu_length_condition") or "").strip():
+            errors.append(f"cases.{case_id}: empty psu_length_condition")
     missing_case_prices = [case.get("id", "<no-id>") for case in case_items if case.get("price_cny") is None]
     if missing_case_prices:
         sample = ", ".join(missing_case_prices[:5])
@@ -524,6 +564,8 @@ def main():
                 errors.append(f"{prefix}: missing fields {missing}")
             if row.get("game") not in game_ids:
                 errors.append(f"{prefix}: unknown game {row.get('game')}")
+            if row.get("source_type") == "public_fps_prediction" and row.get("confidence") == "high":
+                errors.append(f"{prefix}: public prediction confidence must not be high")
             if not row.get("p1_low_fps") and not row.get("fps_range"):
                 errors.append(f"{prefix}: missing either p1_low_fps or fps_range")
             for field in ("avg_fps", "p1_low_fps", "fps_range", "base_fps"):

@@ -31,7 +31,7 @@ DATA = ROOT / "data"
 class CompatibilityChecker:
     """装机兼容性检查引擎。
 
-    检查 11 项兼容性: CPU↔主板, 内存↔主板(代际/数量/容量),
+    检查 12 类基础兼容性: CPU↔主板, 内存↔主板(代际/数量/容量),
     显卡↔机箱, 硬盘↔主板, 电源↔功耗, 散热↔机箱, 机箱↔主板, 机箱↔电源。
     """
 
@@ -43,6 +43,15 @@ class CompatibilityChecker:
         "M-ATX": ["MATX", "ITX"],
         "Mini-ITX": ["ITX"],
         "ITX": ["ITX"],
+    }
+
+    RADIATOR_SIZE_COMPATIBILITY = {
+        120: {120},
+        140: {140},
+        240: {120, 240},
+        280: {140, 280},
+        360: {120, 240, 360},
+        420: {140, 280, 420},
     }
 
     def _parse_num(self, val, default=0):
@@ -140,7 +149,7 @@ class CompatibilityChecker:
                 return number >= 7000
         return False
 
-    # --- 11 项检查函数 ---
+    # --- 12 类基础检查函数 ---
 
     def check_cpu_motherboard(self, cpu, mb):
         """检查 CPU 和主板兼容性: socket 接口匹配。"""
@@ -372,8 +381,16 @@ class CompatibilityChecker:
             radiator = cooler.get("radiator_mm", "")
             rad_support = case.get("radiator_support", [])
             if radiator and rad_support:
-                rad_str = str(radiator)
-                supported = any(rad_str in str(s) for s in rad_support)
+                requested = int(self._parse_num(radiator))
+                listed_sizes = {
+                    int(size)
+                    for value in rad_support
+                    for size in re.findall(r"(?<!\d)(120|140|240|280|360|420)(?!\d)", str(value))
+                }
+                supported = any(
+                    requested in self.RADIATOR_SIZE_COMPATIBILITY.get(size, {size})
+                    for size in listed_sizes
+                )
                 if not supported:
                     return {"type": "error",
                         "msg": f"冷排【{radiator}】不在机箱支持范围【{rad_support}】"}
@@ -420,7 +437,13 @@ class CompatibilityChecker:
         )
         small_psu_forms = ("SFX", "SFXL", "TFX", "FLEX")
         small_psu_only = "ATX" not in case_psu_support and any(s in small_psu_forms for s in case_psu_support)
-        special_case = model_special or small_psu_only
+        motherboard_support = [self._normalize(s) for s in case.get("motherboard_support", [])]
+        compact_hybrid = (
+            bool(motherboard_support)
+            and "ATX" not in motherboard_support
+            and any(s in small_psu_forms for s in case_psu_support)
+        )
+        special_case = model_special or small_psu_only or compact_hybrid
         psu_size = self._normalize(psu.get("form_factor"))
         if not psu_size:
             return {"type": "skipped",
@@ -436,6 +459,8 @@ class CompatibilityChecker:
         case_limit = self._parse_num(
             case.get("psu_length_mm", 0) or case.get("psu_max_length_mm", 0) or case.get("psu_clearance_mm", 0)
         )
+        recommended_limit = self._parse_num(case.get("psu_length_recommended_mm", 0))
+        length_condition = str(case.get("psu_length_condition") or "").strip()
         if psu_size in case_psu_support:
             if special_case and (not case_limit or not psu_len):
                 return {"type": "skipped",
@@ -443,6 +468,14 @@ class CompatibilityChecker:
             if case_limit and psu_len and psu_len > case_limit:
                 return {"type": "error",
                     "msg": f"电源长度【{psu_len}mm】超过机箱电源位限制【{case_limit}mm】"}
+            if recommended_limit and psu_len and psu_len > recommended_limit:
+                condition_text = length_condition.rstrip("。；，,; ")
+                detail = f"；{condition_text}" if condition_text else ""
+                return {"type": "warn",
+                    "msg": f"电源长度【{psu_len}mm】未超过物理上限【{case_limit}mm】，但超过保守建议【{recommended_limit}mm】{detail}，需按冷排、显卡、硬盘笼和线材布局复核"}
+            if length_condition and case_limit and psu_len and not recommended_limit:
+                return {"type": "warn",
+                    "msg": f"电源长度【{psu_len}mm】未超过物理上限【{case_limit}mm】，但该上限存在布局条件；{length_condition}，需复核实际安装组合"}
             if case_limit and psu_len and case_limit - psu_len < 20:
                 return {"type": "warn",
                     "msg": f"电源长度【{psu_len}mm】接近机箱电源位限制【{case_limit}mm】，需复核线材弯折、限高和硬盘笼空间"}
@@ -587,7 +620,7 @@ def load_components():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="装机兼容性检查 — 11 项兼容性检查")
+        description="装机兼容性检查 — 12 类基础兼容性检查")
     parser.add_argument("--cpu", help="CPU ID")
     parser.add_argument("--mb", help="主板 ID")
     parser.add_argument("--mem", action="append", help="内存 ID (可多次指定)")

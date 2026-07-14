@@ -51,7 +51,10 @@ FAN_CATEGORIES = {"fan"}
 
 DEDUPE_SPEC_FIELDS = {
     "cpu": ("socket", "power_w"),
-    "mb": ("socket", "memory_generations", "form_factor", "memory_slots", "m2_slots", "sata_ports"),
+    "mb": (
+        "socket", "memory_generations", "form_factor", "memory_slots",
+        "memory_freq_max", "m2_slots", "sata_ports",
+    ),
     "memory": ("generation", "capacity_gb", "module_count", "frequency_mt", "timing", "color", "rgb"),
     "storage": ("capacity_gb", "capacity_tb", "interface", "pcie_generation", "form_factor", "dram_cache"),
     "gpu": (
@@ -62,11 +65,13 @@ DEDUPE_SPEC_FIELDS = {
     "psu": ("wattage_w", "form_factor", "length_mm", "native_16pin_gpu_power", "color"),
     "case": (
         "colors", "motherboard_support", "gpu_length_mm", "cpu_cooler_height_mm",
-        "psu_support", "psu_length_mm",
+        "psu_support", "psu_length_mm", "psu_length_recommended_mm",
     ),
     "display": ("resolution", "size_inch", "refresh_rate_hz"),
     "fan": ("size_mm", "pack_count", "blade_direction", "color", "fan_type"),
 }
+
+GPU_CONFLICT_FIELDS = ("chip", "vram_gb", "memory_type", "length_mm", "power_w", "power_connectors")
 
 DISPLAY_NAMES = {
     "cpu": "CPU",
@@ -109,6 +114,7 @@ SUMMARY_FIELDS_BY_CATEGORY = {
     "case": SUMMARY_BASE_FIELDS + [
         "colors", "motherboard_support", "gpu_length_mm", "cpu_cooler_height_mm",
         "radiator_support", "fan_mounts", "fan_slots_count", "psu_support", "psu_length_mm",
+        "psu_length_recommended_mm", "psu_length_condition",
         "air_flow_type", "has_dust_filter", "is_showcase",
     ],
     "display": SUMMARY_BASE_FIELDS + ["resolution", "size_inch", "refresh_rate_hz"],
@@ -299,6 +305,33 @@ def _dedupe_key(category, item):
         for field in DEDUPE_SPEC_FIELDS.get(category, ())
     )
     return (category, brand, model, specs)
+
+
+def _model_identity_key(item):
+    model = compact_text(item.get("model"))
+    brand = compact_text(item.get("brand"))
+    if brand and model.startswith(brand):
+        model = model[len(brand):]
+    return brand, model
+
+
+def filter_ambiguous_gpu_skus(results, catalog):
+    """Hide exact model identities whose compatibility-sensitive facts conflict."""
+    grouped = {}
+    for item in catalog:
+        key = _model_identity_key(item)
+        if not all(key):
+            continue
+        facts = grouped.setdefault(key, {field: set() for field in GPU_CONFLICT_FIELDS})
+        for field in GPU_CONFLICT_FIELDS:
+            value = item.get(field)
+            if value not in (None, "", []):
+                facts[field].add(compact_text(value))
+    ambiguous = {
+        key for key, fields in grouped.items()
+        if any(len(values) > 1 for values in fields.values())
+    }
+    return [item for item in results if _model_identity_key(item) not in ambiguous]
 
 
 def dedupe_results(category, results):
@@ -707,6 +740,19 @@ def in_current_scope(section, item, include_workstation_gpu=False):
     return True
 
 
+def _matches_explicit_legacy_scope(section, item, requested_socket):
+    """Expose only the supported AM4 exception when the caller asks for it."""
+    wanted = compact_text(requested_socket)
+    if wanted not in {"AM4", "SOCKETAM4"}:
+        return False
+    model = compact_text(" ".join(str(item.get(k, "")) for k in ("brand", "model")))
+    if section == "cpus":
+        return "RYZEN" in model and "X3D" in model
+    if section == "motherboards":
+        return compact_text(item.get("chipset")) == "B550"
+    return False
+
+
 def _matches_socket(item, requested):
     item_socket = compact_text(item.get("socket"))
     wanted = compact_text(requested)
@@ -738,6 +784,9 @@ def _matches_form_factor(section, item, requested):
         return _normalize_form_factor(item.get("form_factor")) == wanted
     if section == "cases":
         supported = [_normalize_form_factor(v) for v in item.get("motherboard_support", [])]
+        if wanted == "ITX":
+            # ITX requests mean a compact chassis, not any tower that can mount an ITX board.
+            return bool(supported) and set(supported).issubset({"ITX", "MINIDTX"})
         compatible = {
             "EATX": {"EATX", "ATX", "MATX", "ITX"},
             "ATX": {"ATX", "MATX", "ITX"},
@@ -745,7 +794,16 @@ def _matches_form_factor(section, item, requested):
             "ITX": {"ITX"},
         }
         return any(wanted in compatible.get(value, {value}) for value in supported)
+    if section == "psus":
+        return _normalize_form_factor(item.get("form_factor")) == wanted
     return True
+
+
+def _has_usable_price(item):
+    return (
+        item.get("price_status") != "needs_market_quote"
+        and _parse_num(item.get("price_cny")) > 0
+    )
 
 
 def _matches_max_length(section, item, max_length):
@@ -981,7 +1039,7 @@ def query(category=None, budget=None, platform=None, color=None,
         for item in cases_data.get("cases", []):
             if not _matches_identity(item, model=model, item_id=item_id):
                 continue
-            if has_price_only and item.get("price_status") == "needs_market_quote" and not (model or item_id):
+            if has_price_only and not _has_usable_price(item) and not (model or item_id):
                 continue
             if not include_legacy and not item.get("motherboard_support") and not (model or item_id):
                 continue
@@ -1008,7 +1066,7 @@ def query(category=None, budget=None, platform=None, color=None,
         for item in displays_data.get("displays", []):
             if not _matches_identity(item, model=model, item_id=item_id):
                 continue
-            if has_price_only and item.get("price_status") == "needs_market_quote" and not (model or item_id):
+            if has_price_only and not _has_usable_price(item) and not (model or item_id):
                 continue
             if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
                 continue
@@ -1032,7 +1090,7 @@ def query(category=None, budget=None, platform=None, color=None,
                 continue
             if is_fan_accessory(item) and fan_type != "accessory":
                 continue
-            if has_price_only and item.get("price_status") == "needs_market_quote" and not (model or item_id):
+            if has_price_only and not _has_usable_price(item) and not (model or item_id):
                 continue
             if not include_legacy and item.get("default_recommend") is False and not (model or item_id):
                 continue
@@ -1067,12 +1125,12 @@ def query(category=None, budget=None, platform=None, color=None,
         for item in lib.get(sec, []):
             if not _matches_identity(item, model=model, item_id=item_id):
                 continue
-            if has_price_only and item.get("price_status") == "needs_market_quote" and not (model or item_id):
+            if has_price_only and not _has_usable_price(item) and not (model or item_id):
                 continue
-            if not include_legacy and not (model or item_id) and not in_current_scope(
-                sec, item, include_workstation_gpu=include_workstation_gpu
-            ):
-                continue
+            if not include_legacy and not (model or item_id):
+                in_scope = in_current_scope(sec, item, include_workstation_gpu=include_workstation_gpu)
+                if not in_scope and not _matches_explicit_legacy_scope(sec, item, socket):
+                    continue
             if budget and item.get("price_cny") and _parse_num(item.get("price_cny")) > budget:
                 continue
             if platform:
@@ -1119,6 +1177,8 @@ def query(category=None, budget=None, platform=None, color=None,
             results = keep_identity_matches_without_untrusted_prices(category, results)
         else:
             results = filter_low_price_outliers(category, results)
+            if category == "gpu":
+                results = filter_ambiguous_gpu_skus(results, lib.get("gpus", []))
     _sort_results(results, sort, category)
     return dedupe_results(category, results)[:limit]
 
@@ -1426,13 +1486,15 @@ def _summarize_case(case):
         "price_date": case.get("price_date"),
         "colors": case.get("colors", case.get("color", "")),
         "motherboard_support": case.get("motherboard_support", []),
-        "gpu_length_mm": case.get("gpu_length_mm", 0),
-        "cpu_cooler_height_mm": case.get("cpu_cooler_height_mm", 0),
+        "gpu_length_mm": case.get("gpu_length_mm"),
+        "cpu_cooler_height_mm": case.get("cpu_cooler_height_mm"),
         "radiator_support": case.get("radiator_support", []),
         "fan_mounts": fan_mounts,
         "fan_slots_count": parse_fan_slots_count(fan_mounts),
         "psu_support": case.get("psu_support", ["ATX"]),
-        "psu_length_mm": case.get("psu_length_mm", 0),
+        "psu_length_mm": case.get("psu_length_mm"),
+        "psu_length_recommended_mm": case.get("psu_length_recommended_mm"),
+        "psu_length_condition": case.get("psu_length_condition"),
         "air_flow_type": case.get("air_flow_type", ""),
         "has_dust_filter": case.get("has_dust_filter"),
         "dust_filter_status": _dust_filter_status(case),
@@ -1546,7 +1608,10 @@ def main():
     parser.add_argument("--socket", help="CPU/主板 socket 过滤 (LGA1700/AM5/LGA1851)")
     parser.add_argument("--chipset", help="主板芯片组过滤 (B760/B850/X870/Z890 等)")
     parser.add_argument("--memory-gen", help="内存代际过滤 (DDR4/DDR5)，作用于主板和内存")
-    parser.add_argument("--form-factor", help="主板/机箱版型过滤 (ATX/M-ATX/ITX)")
+    parser.add_argument(
+        "--form-factor",
+        help="主板/机箱/电源规格过滤；case+ITX 只返回紧凑机箱，PSU 按 ATX/SFX/SFX-L 精确匹配",
+    )
     parser.add_argument("--max-length", type=int,
                         help="显卡长度上限；查询机箱时表示需要容纳的显卡长度 (mm)")
     parser.add_argument("--gpu-cooling", choices=["air", "liquid", "any"], default="air",

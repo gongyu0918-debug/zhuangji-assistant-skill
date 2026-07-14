@@ -176,6 +176,20 @@ def infer_modular(item):
     return item.get("modular")
 
 
+def infer_psu_form_factor(item):
+    """Prefer an explicit small-form-factor token over a conflicting imported field."""
+    text = _upper(item)
+    if re.search(r"(?<![A-Z0-9])SFX[- ]?L(?![A-Z0-9])", text):
+        return "SFX-L"
+    if re.search(r"(?<![A-Z0-9])SFX(?![A-Z0-9])", text):
+        return "SFX"
+    if re.search(r"(?<![A-Z0-9])FLEX(?![A-Z0-9])", text):
+        return "FLEX"
+    if re.search(r"(?<![A-Z0-9])TFX(?![A-Z0-9])", text):
+        return "TFX"
+    return item.get("form_factor")
+
+
 def infer_cooler_type(item):
     """Infer air/liquid cooler type from model text."""
     text = _upper(item)
@@ -239,6 +253,9 @@ def enrich_item(section, item):
             enriched["radiator_mm"] = radiator
         enriched["rgb"] = infer_rgb(enriched)
     elif section == "psus":
+        form_factor = infer_psu_form_factor(enriched)
+        if form_factor:
+            enriched["form_factor"] = form_factor
         native = infer_native_16pin_psu(enriched)
         if native is not None:
             enriched["native_16pin_gpu_power"] = native
