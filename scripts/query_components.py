@@ -14,6 +14,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import date
 from functools import lru_cache
 from statistics import median
 from pathlib import Path
@@ -88,7 +89,10 @@ DISPLAY_NAMES = {
 }
 
 # Summary fields per category — minimal fields needed for first-pass narrowing.
-SUMMARY_BASE_FIELDS = ["id", "brand", "model", "price_cny", "price_status", "price_date"]
+SUMMARY_BASE_FIELDS = [
+    "id", "brand", "model", "price_cny", "price_status", "price_date",
+    "price_age_days", "price_stale",
+]
 SUMMARY_FIELDS_BY_CATEGORY = {
     "cpu": SUMMARY_BASE_FIELDS + ["platform", "socket", "cores_threads", "cores", "threads", "power_w"],
     "mb": SUMMARY_BASE_FIELDS + [
@@ -1011,12 +1015,28 @@ def _matches_gpu_chip(item, requested):
 
 def _sort_results(results, sort, category=None):
     """Sort with missing prices last and keep case sorting consistent."""
+    for item in results:
+        item.update(_price_freshness(item))
     if sort == "tier":
         results.sort(key=lambda x: _tier_sort_key(category, x))
     elif sort in ("desc", "price-desc"):
         results.sort(key=lambda x: (x.get("price_cny") is None, -_parse_num(x.get("price_cny")), x.get("id", "")))
     else:
         results.sort(key=lambda x: (x.get("price_cny") is None, _parse_num(x.get("price_cny")), x.get("id", "")))
+
+
+def _price_freshness(item, as_of=None):
+    """Return a non-blocking 14-day freshness annotation for a priced row."""
+    raw_date = item.get("price_date")
+    if not item.get("price_cny") or not raw_date:
+        return {}
+    try:
+        quoted_on = date.fromisoformat(str(raw_date))
+    except ValueError:
+        return {}
+    reference = as_of or date.today()
+    age_days = max(0, (reference - quoted_on).days)
+    return {"price_age_days": age_days, "price_stale": age_days > 14}
 
 
 def query(category=None, budget=None, platform=None, color=None,
@@ -1484,6 +1504,7 @@ def _summarize_case(case):
         "price_cny": case.get("price_cny"),
         "price_status": case.get("price_status"),
         "price_date": case.get("price_date"),
+        **_price_freshness(case),
         "colors": case.get("colors", case.get("color", "")),
         "motherboard_support": case.get("motherboard_support", []),
         "gpu_length_mm": case.get("gpu_length_mm"),
@@ -1658,6 +1679,20 @@ def main():
                         help="包含 RTX PRO 6000 等工作站显卡；仅本地大模型/工作站超高预算场景使用")
     args = parser.parse_args()
 
+    for name in (
+        "budget", "max_length", "min_vram", "min_capacity", "max_capacity",
+        "fan_size", "radiator_bundle", "min_refresh", "limit",
+    ):
+        value = getattr(args, name)
+        if value is not None and value <= 0:
+            parser.error(f"--{name.replace('_', '-')} must be greater than 0")
+    if (
+        args.min_capacity is not None
+        and args.max_capacity is not None
+        and args.min_capacity > args.max_capacity
+    ):
+        parser.error("--min-capacity cannot exceed --max-capacity")
+
     if args.category == "all":
         grouped = query_all(
             budget=args.budget,
@@ -1705,7 +1740,8 @@ def main():
                     color = r.get("colors", r.get("color", ""))
                     showcase_tag = " [海景房]" if r.get("is_showcase") else ""
                     extra = display_extra(category, r)
-                    print(f"  {r.get('id',''):45s} {r.get('brand',''):10s} {r.get('model',''):35s} {price:>8s} {color} {extra} {showcase_tag}")
+                    stale_tag = " [价格超过14天]" if r.get("price_stale") else ""
+                    print(f"  {r.get('id',''):45s} {r.get('brand',''):10s} {r.get('model',''):35s} {price:>8s} {color} {extra} {showcase_tag}{stale_tag}")
         return 0 if total else 2
 
     results = query(
@@ -1764,10 +1800,12 @@ def main():
                 color = r.get("colors", r.get("color", ""))
                 showcase_tag = " [海景房]" if r.get("is_showcase") else ""
                 extra = display_extra(args.category, r)
-                print(f"  {r.get('id',''):45s} {r.get('brand',''):10s} {r.get('model',''):35s} {price:>8s} {color} {extra} {showcase_tag}")
+                stale_tag = " [价格超过14天]" if r.get("price_stale") else ""
+                print(f"  {r.get('id',''):45s} {r.get('brand',''):10s} {r.get('model',''):35s} {price:>8s} {color} {extra} {showcase_tag}{stale_tag}")
             else:
                 price = f"¥{r['price_cny']}" if r.get("price_cny") else "待补价"
-                print(f"  {r['id']:45s} {r.get('brand',''):12s} {r.get('model',''):40s} {price:>8s}")
+                stale_tag = " [价格超过14天]" if r.get("price_stale") else ""
+                print(f"  {r['id']:45s} {r.get('brand',''):12s} {r.get('model',''):40s} {price:>8s}{stale_tag}")
     return 0 if output else 2
 
 

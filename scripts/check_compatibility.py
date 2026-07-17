@@ -2,9 +2,11 @@
 """装机兼容性检查引擎。
 
 用法:
-  python check_compatibility.py --cpu cpu-intel-i5-14400f --mb mb-asus-b760m-k-d4 \
-    --mem mem-ddr4-3200-16-kingston-beast --gpu gpu-gigabyte-rtx5070-windforce-oc \
-    --psu psu-msi-a750gl-pcie5 --case case-jonsbo-d31-mesh-black --cooler cooler-tr-pa120se
+  python check_compatibility.py --strict --cpu cpu-intel-i5-14400f \
+    --mb demo-mb-asus-prime-b760m-k-d4 --mem mem-ddr4-3200-32-kingston-beast-black \
+    --storage ssd-nv21tb3500mbs --gpu demo-gpu-gigabyte-rtx5070-windforce-oc \
+    --psu demo-psu-msi-mag-a750gl-pcie5 --case case-jonsbo-d31-mesh \
+    --cooler demo-cooler-thermalright-pa120se
 """
 
 import argparse
@@ -84,6 +86,14 @@ class CompatibilityChecker:
         if not val:
             return ""
         return re.sub(r"[^0-9a-zA-Z]", "", str(val)).upper()
+
+    def _as_list(self, value):
+        """Normalize nullable/list-like catalog fields without inventing facts."""
+        if value in (None, "", [], (), {}):
+            return []
+        if isinstance(value, (list, tuple, set)):
+            return list(value)
+        return [value]
 
     def _normalize_socket_list(self, val):
         """Normalize socket strings while preserving multi-socket separators."""
@@ -174,7 +184,7 @@ class CompatibilityChecker:
         for i, mem in enumerate(memory_list):
             label = str(i + 1) if len(memory_list) > 1 else ""
             mem_gen = mem.get("generation", "")
-            mb_gens = mb.get("memory_generations", [])
+            mb_gens = self._as_list(mb.get("memory_generations"))
             if not mem_gen or not mb_gens:
                 results.append({"type": "msg", "msg": f"内存{label}缺少接口信息"})
                 continue
@@ -247,8 +257,11 @@ class CompatibilityChecker:
         if not mb:
             return {"type": "msg", "msg": "缺少必要组件主板"}
         m2_slots = self._parse_num(mb.get("m2_slots", 0))
-        m2_count = sum(1 for s in storage_list
-                       if "M.2" in s.get("form_factor", "") or "M.2" in s.get("interface", ""))
+        m2_count = sum(
+            1 for s in storage_list
+            if "M.2" in str(s.get("form_factor") or "").upper()
+            or "M.2" in str(s.get("interface") or "").upper()
+        )
         m2_sata_count = sum(
             1 for s in storage_list
             if "M.2" in str(s.get("form_factor", ""))
@@ -300,8 +313,11 @@ class CompatibilityChecker:
                 "msg": "硬盘接口信息不足，SATA数量由硬盘接口复核项覆盖",
                 "review_required": False,
             }
-        sata_count = sum(1 for s in storage_list
-                         if "SATA" in s.get("interface", "") and "M.2" not in s.get("form_factor", ""))
+        sata_count = sum(
+            1 for s in storage_list
+            if "SATA" in str(s.get("interface") or "").upper()
+            and "M.2" not in str(s.get("form_factor") or "").upper()
+        )
         sata_ports = self._parse_num(mb.get("sata_ports", 0))
         if not sata_count:
             return {"type": "success", "msg": "未使用SATA设备，无需占用主板SATA接口"}
@@ -379,7 +395,7 @@ class CompatibilityChecker:
                 return {"type": "success", "msg": "风冷高度在机箱限制内"}
         elif cooler_type in ("liquid", "water", "水冷"):
             radiator = cooler.get("radiator_mm", "")
-            rad_support = case.get("radiator_support", [])
+            rad_support = self._as_list(case.get("radiator_support"))
             if radiator and rad_support:
                 requested = int(self._parse_num(radiator))
                 listed_sizes = {
@@ -409,7 +425,9 @@ class CompatibilityChecker:
         if not mb:
             return {"type": "msg", "msg": "缺少必要组件主板"}
         mb_ff = mb.get("form_factor", "")
-        case_support = case.get("motherboard_support", [])
+        case_support = self._as_list(case.get("motherboard_support"))
+        if not mb_ff or not case_support:
+            return {"type": "msg", "msg": "机箱或主板缺少版型信息，需下单前复核"}
         ff_normalized = self._normalize_form_factor(mb_ff)
         support_normalized = [self._normalize_form_factor(s) for s in case_support]
         # 直接匹配
@@ -430,14 +448,14 @@ class CompatibilityChecker:
         if not psu:
             return {}
         case_model = str(case.get("model", ""))
-        case_psu_support = [self._normalize(s) for s in case.get("psu_support", ["ATX"])]
+        case_psu_support = [self._normalize(s) for s in self._as_list(case.get("psu_support"))]
         model_special = any(
             term in case_model.upper()
             for term in ("ITX", "MINI", "SFX", "NAS", "HTPC", "卧式", "小型", "紧凑")
         )
         small_psu_forms = ("SFX", "SFXL", "TFX", "FLEX")
         small_psu_only = "ATX" not in case_psu_support and any(s in small_psu_forms for s in case_psu_support)
-        motherboard_support = [self._normalize(s) for s in case.get("motherboard_support", [])]
+        motherboard_support = [self._normalize(s) for s in self._as_list(case.get("motherboard_support"))]
         compact_hybrid = (
             bool(motherboard_support)
             and "ATX" not in motherboard_support

@@ -41,9 +41,14 @@ def compact_text(value):
 
 def hardware_key(value, tokens):
     text = compact_text(value)
-    for token in tokens:
+    for token in sorted(tokens, key=len, reverse=True):
         if token in text:
             return token
+    if tokens is GPU_TOKENS:
+        for token in sorted(tokens, key=len, reverse=True):
+            bare = re.sub(r"^(?:RTX|RX|ARC)", "", token)
+            if text == bare:
+                return token
     return text
 
 
@@ -95,13 +100,14 @@ def _text_matches(sample_text, query_text, kind):
     return bool(sample and sample == query)
 
 
-def choose_row(rows, cpu_text, gpu_text):
+def choose_row(rows, cpu_text, gpu_text, memory_text=""):
     if not rows:
         return None
     filtered = [
         row for row in rows
         if _text_matches(row.get("cpu"), cpu_text, "cpu")
         and _text_matches(row.get("gpu"), gpu_text, "gpu")
+        and (not memory_text or not row.get("memory") or _text_matches(row.get("memory"), memory_text, "memory"))
     ]
     if filtered:
         return filtered[0]
@@ -145,7 +151,7 @@ def query_one(db, game_id, resolution, preset, cpu, gpu, memory, target_fps=None
         and row.get("resolution") == resolution
         and row.get("preset") == preset
     ]
-    row = choose_row(rows, cpu, gpu)
+    row = choose_row(rows, cpu, gpu, memory)
     if not row:
         return None
     result = dict(row)

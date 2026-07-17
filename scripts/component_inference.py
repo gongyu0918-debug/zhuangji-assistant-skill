@@ -92,7 +92,7 @@ def infer_capacity_gb(item):
 def infer_memory_capacity_gb(item):
     """Infer memory kit total capacity from model text before trusting noisy fields."""
     text = _upper(item).replace("×", "X")
-    total_match = re.search(r"(?<!\d)(\d{1,3})\s*GB\s*(?:\(|DDR|D[45]|$)", text)
+    total_match = re.search(r"(?<!\d)(\d{1,3})\s*G(?:B)?\s*(?:\(|DDR|D[45]|$)", text)
     if total_match:
         total = int(total_match.group(1))
         if 4 <= total <= 256:

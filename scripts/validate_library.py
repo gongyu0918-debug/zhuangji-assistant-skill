@@ -68,6 +68,10 @@ VALID_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9\u4e00-\u9fff]+)+$")
 FAN_ACCESSORY_RE = re.compile(r"(?:控制器|集线器|遥控器|HUB)\s*$", re.IGNORECASE)
 BLACK_VARIANT_RE = re.compile(r"黑(?:色|款|版|\s|$)", re.IGNORECASE)
 WHITE_VARIANT_RE = re.compile(r"白(?:色|款|版|\s|$)", re.IGNORECASE)
+OBVIOUS_MODEL_TYPO_RE = re.compile(
+    r"\b(?:RYZWN|RYWEN)(?=\s*\d)|\bINTE\s+CORE\b",
+    re.IGNORECASE,
+)
 
 COVERAGE_FIELDS = {
     "gpus": ["length_mm", "requires_16pin_psu"],
@@ -281,6 +285,8 @@ def main():
                 errors.append(f"{section}.{item_id}: missing fields {missing}")
 
             _validate_price(section, item, errors, warnings)
+            if OBVIOUS_MODEL_TYPO_RE.search(str(item.get("model") or "")):
+                errors.append(f"{section}.{item_id}: obvious model-family spelling error")
             if section == "cpus":
                 consistency_error = _check_cpu_vendor_consistency(item)
                 if consistency_error:
@@ -601,6 +607,9 @@ def main():
         for item in lib.get(section, []):
             ps = item.get("price_status", "unknown")
             status_counts[ps] = status_counts.get(ps, 0) + 1
+    for item in case_items:
+        ps = item.get("price_status", "unknown")
+        status_counts[ps] = status_counts.get(ps, 0) + 1
     print(f"price status counts: {status_counts}")
 
     if coverage_rows:
