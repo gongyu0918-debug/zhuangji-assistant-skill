@@ -93,4 +93,4 @@
 
 ## 用途特例
 
-直播、FPS、本地 agent、ComfyUI、CAD、PS、剪辑、AE、Blender、UE、高预算配平、海景房、ITX、背插和显卡特殊情况都在 `scenarios.md`。使用这些场景时，先按本文件识别工作模式，再读取 `scenarios.md` 对应章节。
+直播、FPS、本地 agent、ComfyUI、CAD、PS、剪辑、AE、Blender、UE、海景房、ITX、背插和显卡特殊情况都在 `scenarios.md`。使用这些场景时，先按本文件识别工作模式，再读取 `scenarios.md` 对应章节。
