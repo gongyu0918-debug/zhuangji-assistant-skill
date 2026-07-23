@@ -11,7 +11,6 @@
 - 色系、海景房、ITX 和背插
 - 机箱和风扇
 - 直播、FPS、本地 agent、ComfyUI、CAD、PS、剪辑、AE、Blender、UE
-- 高预算配平
 
 ## 预算场景细则
 
