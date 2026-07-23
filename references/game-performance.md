@@ -7,14 +7,8 @@
 1. 先按正常装机流程确定 CPU、显卡、内存和分辨率；运行脚本时必须显式传 `--resolution`，用户没说就先按其显示器或目标分辨率确认，不默认代填 1080p。
 2. 运行 `scripts/query_game_fps.py` 查离线帧率样本。
 3. 只引用脚本返回的已收录样本；查不到时写“离线帧率表暂未收录这个游戏/硬件组合的已核验来源样本”，不要按硬件档位自行推算。
-4. `source_default_unknown` 表示公开来源只给出默认/未知画质口径；这是内部数据标签，用户报告里不要直接写出来，改写成“游戏 / 分辨率 大约帧率”。
-
-常用命令示例：
-
-```bash
-python scripts/query_game_fps.py --game 三角洲 --resolution 1080p --cpu "Ryzen 7 9800X3D" --gpu "RTX 5070" --memory "DDR5 6000 C30 32GB" --target-fps 300
-python scripts/query_game_fps.py --game 3A --resolution 1440p --cpu "Ryzen 7 9800X3D" --gpu "RTX 5070 Ti"
-```
+4. 调用时必传游戏和分辨率；已有配置时再传 CPU、GPU 和内存，用户明确目标刷新率时再传目标 FPS。优先读取 JSON 结果。
+5. 数据来源和画质口径等内部标签不得原样进入用户报告，统一改写成“游戏 / 分辨率 大约帧率”。
 
 ## 输出口径
 
