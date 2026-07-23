@@ -37,7 +37,6 @@ Lexar, ZhiTai, Fanxiang
 
 品牌: Seasonic, Super Flower, Corsair, Cooler Master, FSP,
 Great Wall, Huntkey, MSI, ASUS, Thermaltake, XPG, Antec
-- RTX 5070+ 优先原生 12V-2x6/12VHPWR
 
 ## 散热
 
@@ -60,4 +59,4 @@ Fractal Design, Corsair, Montech, Phanteks, Thermaltake, SAMA
 
 - 独立数据库，仅用户明确要求“带显示器/推荐显示器/屏幕”时启用。
 - 按分辨率、尺寸、刷新率和参考价做候选筛选；不参与整机默认总价、兼容性检查或机箱/电源/散热决策。
-- 显示器面板、调色、支架、接口和售后差异较大，输出时只做规格参考，不把同规格候选写成唯一正确选择。
+- 显示器候选只按分辨率、尺寸、刷新率和参考价筛选。
